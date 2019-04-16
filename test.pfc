@@ -1,0 +1,10 @@
+algorithm fib(int n) {
+  int res1 = 0;
+  int res2 = 1;
+  for(int i = 0; i < n; i++) {
+    int aux = res1 + res2;
+    res1 = res2;
+    res2 = aux;
+  }
+  return res1;
+}

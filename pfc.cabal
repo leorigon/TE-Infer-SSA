@@ -1,0 +1,36 @@
+name:                pfc
+version:             0.1.0.0
+homepage:           https://github.com/leorigon/TE-Infer-SSA
+license:            BSD3
+license-file:       LICENSE
+author:             Leonardo
+maintainer:         leorigonn@hotmailcom
+copyright:          2018
+category:           Compilers/Interpreters
+build-type:         Simple
+cabal-version:      >=1.10
+extra-source-files: README.md,
+                    src/Lambda/Lexer.x,
+                    src/Lambda/Parser.y,
+                    src/Lexer.x,
+                    src/Parser.y
+
+executable pfc
+  ghc-options:      -O2
+  hs-source-dirs:   src
+  main-is:          Main.hs
+  default-language: Haskell2010
+  build-tools:      alex, happy
+  other-modules:    Lambda.Calculus,
+                    Lambda.Lexer,
+                    Lambda.Inference,
+                    Lambda.Parser,
+                    BasicBlock,
+                    Dominance,
+                    Lexer,
+                    Parser,
+                    SingleAssignment
+  build-depends:    base >= 4.7 && < 5,
+                    array >= 0.5,
+                    containers >= 0.5,
+                    mtl >= 2.0
