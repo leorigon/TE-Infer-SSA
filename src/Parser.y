@@ -37,6 +37,10 @@ import qualified Data.Map.Lazy as M
   break      { (_, _, _, L.TokenBreak) }
   continue   { (_, _, _, L.TokenContinue) }
   ref        { (_, _, _, L.TokenRef) }
+  effect     { (_, _, _, L.TokenEffect) }
+  function   { (_, _, _, L.TokenFunction) }
+  handler    { (_, _, _, L.TokenHandler) }
+  pure       { (_, _, _, L.TokenPure) }
   identifier { (_, _, $$, L.TokenIdentifier) }
   number_lit { (_, _, $$, L.TokenNumberLiteral) }
   string_lit { (_, _, $$, L.TokenStringLiteral) }
@@ -78,6 +82,8 @@ ToplevelList: {- Empty -}                           { [] }
             | Toplevel ToplevelList                 { $1 : $2 }
 
 Toplevel: Algorithm                                 { $1 }
+        | Effect                                    { error "TODO" }
+        | Handler                                   { error "TODO" }
 
 Algorithm: algorithm identifier ParamList Body      { Algorithm $2 $3 $4 }
 
@@ -90,9 +96,11 @@ DeclaratorList: Declarator                          { [$1] }
               | Declarator ',' DeclaratorList       { $1 : $3 }
 
 Declarator: var identifier                          { DeclareVar $2 }
-          | int identifier                          { DeclareInt $2 }
-          | bool identifier                         { DeclareBool $2 }
-          | string identifier                       { DeclareString $2 }
+          | BaseType identifier                     { $1 $2 }
+
+BaseType: int                                       { DeclareInt }
+        | bool                                      { DeclareBool }
+        | string                                    { DeclareString }
 
 Body: '{' StatementSequenceOpt '}'                  { BlockStatement $2 }
 
@@ -117,7 +125,7 @@ Statement: AssignmentStatement                      { $1 }
 
 Assignment: identifier '=' Expression               { ($1, $3) }
           | identifier '++'                         { ($1, AddExpression (VarExpression $1) (NumExpression 1)) }
-          | identifier '--'                         { ($1, AddExpression (VarExpression $1) (NumExpression 1)) }
+          | identifier '--'                         { ($1, SubExpression (VarExpression $1) (NumExpression 1)) }
 
 AssignmentStatement: Assignment ';'                 { AssignmentStatement (fst $1) (snd $1) }
 
@@ -191,8 +199,33 @@ Expression: identifier                              { VarExpression $1 }
           | '(' ')'                                 { UnitExpression }
           | '(' Expression ')'                      { $2 }
 
+Effect: effect identifier '{' EffectDecls '}'       { () }
+
+EffectDecls: {- empty -}                            { [] }
+           | EffectDecl ';' EffectDecls             { $1 : $3 }
+
+EffectDecl: function identifier EffectSignature     { () }
+
+EffectSignature: '(' ')' EffectReturn               { () }
+               | '(' EffectParams ')' EffectReturn  { () }
+
+EffectParams: BaseType                              { () }
+            | BaseType ',' EffectParams             { () }
+
+EffectReturn: ':' BaseType                          { () }
+            | {- empty -}                           { () }
+
+Handler: HandlerPrologue '{' HandlerBody '}'        { () }
+HandlerPrologue: handler identifier '(' ')'         { () }
+HandlerBody: {- empty -}                            { () }
+           | pure ':' Body HandlerBody              { () }
+           | HandlerCase ':' Body HandlerBody       { () }
+HandlerCase: case identifier '(' ')'                { () }
+
 {
+
 type Identifier = String
+type Arguments = [Expression]
 
 data Toplevel = Algorithm Identifier Parameters Statement
               deriving Show
@@ -238,7 +271,6 @@ data Statement = EmptyStatement
                | SequenceStatement Statement Statement
                deriving Show
 
-type Arguments = [Expression]
 
 data Expression = VarExpression Identifier
                 | IndexedVarExpression Identifier Int
@@ -260,13 +292,11 @@ data Expression = VarExpression Identifier
                 | UnitExpression
 
 instance Show Expression where
-  show (VarExpression x) =
-    x
+  show (VarExpression x) = x
   show (IndexedVarExpression x n) =
     let subscript = chr . (+) 0x2050 . ord in
     x ++ map subscript (show n)
-  show (NumExpression n) =
-    show n
+  show (NumExpression n) = show n
   show (StrExpression s) =
     concat (map (\s -> case s of { '"' -> "\\\""; c -> [c] }) s)
   show (CallExpression fun args) =
@@ -309,10 +339,8 @@ setVariablesIndexes expr scope =
           case M.lookup var scope of
             Just i -> IndexedVarExpression var i
             Nothing -> error $ "Use of undeclared var `" ++ var ++ "`"
-        NumExpression _ ->
-          expr
-        StrExpression _ ->
-          expr
+        NumExpression _ -> expr
+        StrExpression _ -> expr
         CallExpression fun args ->
           CallExpression fun (map recurse args)
         AddExpression left right ->
@@ -339,6 +367,6 @@ setVariablesIndexes expr scope =
           DerefExpression (recurse arg)
         NegExpression arg ->
           NegExpression (recurse arg)
-        UnitExpression ->
-          expr
+        UnitExpression -> expr
+
 }

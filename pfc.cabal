@@ -26,6 +26,7 @@ executable pfc
                     Lambda.Inference,
                     Lambda.Parser,
                     BasicBlock,
+                    Converter,
                     Dominance,
                     Lexer,
                     Parser,

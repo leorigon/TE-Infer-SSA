@@ -10,20 +10,18 @@ type Label = Int
 
 data Command = CommandCall String P.Arguments
              | CommandAssign String Int P.Expression
-             | CommandDecl P.Declarator
 
 instance Show Command where
     show (CommandCall fun args) =
         show (P.CallExpression fun args)
     show (CommandAssign var level expr) =
         show (P.IndexedVarExpression var level) ++ " = " ++ show expr
-    show (CommandDecl decl) =
-        show [decl]
 
 data Node = Entry P.Parameters Label
           | Leave Label P.Expression
           | Jmp Label Command Label
           | Ift Label P.Expression Label Label
+          | Phi String Int [(Label, Int)] Node
           deriving Show
 
 make_label = do
@@ -81,7 +79,7 @@ assignVariable var expr = do
     scope <- get_scope
     let level = case M.lookup var scope of
                     Just i -> i
-                    Nothing -> error $ "Use of undeclared var `" ++ var ++ "`"
+                    Nothing -> error $ "Use of undeclared var `" ++ var ++ "`!"
     expr' <- annotateExpression expr
     return $ CommandAssign var level expr'
 
@@ -108,10 +106,9 @@ annotateExpression expr = do
     scope <- get_scope
     return $ P.setVariablesIndexes expr scope
 
+-- Tying the Knot   
+-- https://wiki.haskell.org/Tying_the_Knot
 astToNodes stmt parameters =
-    -- Trick: "tying the knot"; since we never use the destination label of
-    -- blocks while building them, we can use their return map inside the goto
-    -- function, lazily, so we don't need to check the program tree twice! :D
     let fake_label = error "invalid continue/break!"
         initial_scope = M.fromList $ map (flip (,) 0 . P.getDeclaratorName) parameters
         initial_state = (2, fake_label, fake_label, initial_scope, 0, 1)
@@ -178,7 +175,7 @@ astToNodes stmt parameters =
                         restore_scope old_scope
                     return (decl_label, m''', Ift cond_label cond' body_label final : res1 ++ res2 ++ res3)
                 P.SwitchStatement expr stmt -> do
-                    -- TODO!!!
+                    -- TODO: the last thing that will be done, if given time
                     old_break <- get_break
                     put_break final
                     res <- go m stmt final
@@ -214,25 +211,25 @@ astToNodes stmt parameters =
                         Nothing -> do
                             (label, (m', o), res) <- go m stmt final
                             return (label, (M.insert name label m', o), res) in
-
-    -- Result
     let leave_node = Leave 0 P.UnitExpression in
     let entry_node = Entry parameters first_label in
     (M.toList label_map, leave_node : entry_node : result)
 
 nodesToEdges :: [Node] -> [(Node, Label, [Label])]
-nodesToEdges nodes =
-    fmap toEdge nodes
+nodesToEdges nodes = fmap toEdge nodes
     where
-        -- Nodes Jmp apontam apenas para um lugar
         toEdge node@(Jmp label _ next) =
             (node, label, [next])
-        -- Nodes Ift apontam para dois lugares
         toEdge node@(Ift label _ success failure) =
             (node, label, [success, failure])
-        -- Nodes Leave não vão pra lugar nenhum
         toEdge node@(Leave label _) =
             (node, label, [])
-        -- Só temos um nó Entry, que aponta para o começo
         toEdge node@(Entry _ label) =
             (node, 1, [label])
+
+get_id node = case node of
+    Jmp label _ _ -> label
+    Ift label _ _ _ -> label
+    Leave label _ -> label
+    Entry _ _ -> 1
+    Phi _ _ _ node -> get_id node

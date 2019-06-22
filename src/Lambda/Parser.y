@@ -1,8 +1,10 @@
 {
+
 module Lambda.Parser(parse) where
 
 import qualified Lambda.Lexer as L
 import qualified Lambda.Calculus as C
+
 }
 
 %name parse
@@ -14,7 +16,7 @@ import qualified Lambda.Calculus as C
         error ("Unexpected " ++ (show token) ++ " at " ++
           (show line) ++ ":" ++ (show col))
       [] ->
-        error "Unexpected end of file")
+        error "Unexpected end of file")      
 }
 
 %token
@@ -29,6 +31,7 @@ import qualified Lambda.Calculus as C
   '('        { (_, _, _, L.TokenLParen) }
   ')'        { (_, _, _, L.TokenRParen) }
   ','        { (_, _, _, L.TokenComma) }
+  ';'        { (_, _, _, L.TokenSemicolon) }
   '='        { (_, _, _, L.TokenEquals) }
   '.'        { (_, _, _, L.TokenDot) }
   '+'        { (_, _, _, L.TokenPlus) }
@@ -37,9 +40,12 @@ import qualified Lambda.Calculus as C
   '/'        { (_, _, _, L.TokenDiv) }
   '<'        { (_, _, _, L.TokenLess) }
   '>'        { (_, _, _, L.TokenMore) }
+  '<-'       { (_, _, _, L.TokenArrow) }
   identifier { (_, _, $$, L.TokenIdentifier) }
   number     { (_, _, $$, L.TokenNumber) }
 
+%nonassoc identifier number '(' ')'
+%left '<-' ';'
 %nonassoc '<' '=' '>'
 %left '+' '-'
 %left '*' '/'
@@ -72,14 +78,15 @@ Expr: identifier    { C.Free $1 }
     | IfThenElse    { $1 }
     | '(' ')'       { C.UnitValue }
 
-Tuple: Unit ',' Tuple { C.Pack $1 $3 }
-     | Unit           { $1 }
+Tuple: Unit ',' Tuple { C.Pack [$1, $3] }
+    | Unit           { $1 }
 
-Let: let identifier '=' Unit in Unit { C.Let $2 $4 $6 }
+Let: let identifier '=' Unit in Unit    { C.Let $2 $4 $6 }
+    | identifier '<-' Unit ';' Operation { C.Application (C.Lambda $1 $5) $3 }
 
 Lambda: lambda ParamList '.' Unit { $2 $4 }
 
 IfThenElse: if Unit then Unit else Unit { C.If $2 $4 $6 }
 
 ParamList: identifier           { C.Lambda $1 }
-         | identifier ParamList { C.Lambda $1 . $2 }
+    | identifier ParamList { C.Lambda $1 . $2 }

@@ -1,11 +1,13 @@
 {
+
 module Lexer(Lexer.lex, Token(..)) where
+
 }
 
 %wrapper "posn"
 
 $digit = 0-9
-$alpha = [a-zA-Z_]
+$alpha = [a-z]
 
 tokens :-
   $white+                               ;
@@ -28,7 +30,11 @@ tokens :-
   "break"                               { tokenof TokenBreak }
   "continue"                            { tokenof TokenContinue }
   "ref"                                 { tokenof TokenRef }
-  $alpha ($alpha|$digit)*               { tokenof TokenIdentifier }
+  "effect"                              { tokenof TokenEffect }
+  "function"                            { tokenof TokenFunction }
+  "handler"                             { tokenof TokenHandler }
+  "pure"                                { tokenof TokenPure }
+  $alpha ("_"? ($alpha|$digit))*        { tokenof TokenIdentifier }
   $digit+                               { tokenof TokenNumberLiteral }
   [\"]([^\"\\]|[\\].)*[\"]              { tokenof TokenStringLiteral }
   "("                                   { tokenof TokenLeftParen }
@@ -49,9 +55,10 @@ tokens :-
   "=="                                  { tokenof TokenEquals }
   "!="                                  { tokenof TokenDiffs }
   "++"                                  { tokenof TokenIncr }
-  "--"                                  { tokenof TokenDecr }
+  "--"                                  { tokenof TokenDecr } 
 
 {
+
 data Token = TokenAlgorithm
            | TokenVar
            | TokenInt
@@ -71,6 +78,10 @@ data Token = TokenAlgorithm
            | TokenBreak
            | TokenContinue
            | TokenRef
+           | TokenEffect
+           | TokenFunction
+           | TokenHandler
+           | TokenPure
            | TokenIdentifier
            | TokenNumberLiteral
            | TokenStringLiteral
@@ -97,6 +108,6 @@ data Token = TokenAlgorithm
 
 lex = alexScanTokens
 
-tokenof token (AlexPn _ line col) str =
-  (line, col, str, token)
+tokenof token (AlexPn _ line col) str = (line, col, str, token)
+
 }

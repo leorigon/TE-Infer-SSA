@@ -22,6 +22,7 @@ tokens :-
   "("                                   { tokenof TokenLParen }
   ")"                                   { tokenof TokenRParen }
   ","                                   { tokenof TokenComma }
+  ";"                                   { tokenof TokenSemicolon }
   "="                                   { tokenof TokenEquals }
   "."                                   { tokenof TokenDot }
   "+"                                   { tokenof TokenPlus }
@@ -30,6 +31,7 @@ tokens :-
   "/"                                   { tokenof TokenDiv }
   "<"                                   { tokenof TokenLess }
   ">"                                   { tokenof TokenMore }
+  "<-"                                  { tokenof TokenArrow }
   $alpha ($alpha|$digit)*               { tokenof TokenIdentifier }
   $digit+                               { tokenof TokenNumber }
 {
@@ -44,6 +46,7 @@ data Token = TokenLet
            | TokenLParen
            | TokenRParen
            | TokenComma
+           | TokenSemicolon
            | TokenEquals
            | TokenDot
            | TokenPlus
@@ -52,10 +55,14 @@ data Token = TokenLet
            | TokenDiv
            | TokenLess
            | TokenMore
+           | TokenArrow
            | TokenIdentifier
            | TokenNumber
            deriving Show
+
 lex = alexScanTokens
+
 tokenof token (AlexPn _ line col) str =
   (line, col, str, token)
+
 }

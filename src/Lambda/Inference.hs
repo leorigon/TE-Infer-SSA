@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Lambda.Inference where
 
+import Data.Foldable
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
@@ -12,6 +13,7 @@ import Debug.Trace
 
 data TypeError = CannotUnify C.Type C.Type
                | InfiniteType String C.Type
+               | EffectTailCheck String
                | UnboundVariable String
                | Inside C.Expr TypeError
                deriving Show
@@ -40,21 +42,18 @@ instantiate (C.Forall vars t) = do
     return $ C.subst m t
 
 unify (C.Arrow a e b) (C.Arrow x f y) = do
-    s1 <- unify a x
-    s2 <- unify (C.subst s1 e) (C.subst s1 f)
-    s3 <- unify (C.subst (s2 `C.compose` s1) b) (C.subst (s2 `C.compose` s1) y)
-    return $ s3 `C.compose` s2 `C.compose` s1
-unify (C.Pair a b) (C.Pair x y) = do
-    --s1 <- unify a x
-    --s2 <- unify (C.subst s1 b) (C.subst s1 y)
-    --return $ s1 `C.compose` s2
-    error "TODO: UNIFY PAIRS"
+    theta1 <- unify a x
+    theta2 <- unify (C.subst theta1 e) (C.subst theta1 f)
+    theta3 <- unify (C.subst (theta2 `C.compose` theta1) b) (C.subst (theta2 `C.compose` theta1) y)
+    return $ theta3 `C.compose` theta2 `C.compose` theta1
 unify (C.Generic a) t = do
     varBind a t
 unify t (C.Generic a) = do
     varBind a t
+unify C.Unit C.Unit = do
+    return M.empty
 unify C.Int C.Int = do
-   return M.empty
+    return M.empty
 unify C.Bool C.Bool = do
     return M.empty
 unify C.Pure C.Pure = do
@@ -65,31 +64,59 @@ unify C.Foo C.Foo = do
     return M.empty
 unify C.Bar C.Bar = do
     return M.empty
-unify a@(C.Row l k1) k2 = do
-    (k3, s1) <- unifyRow k2 l
-    -- TODO: CHECK THAT tl(k1) NOT IN dom(s1)
-    --       OTHERWISE FAIL
-    -- IMPORTANT!!! OTHERWISE COULD END UP IN INFINITE LOOP
-    s2 <- unify (C.subst s1 k1) (C.subst s1 k3)
-    return $ s2 `C.compose` s1
+unify foo@(C.Row l epsilon1) epsilon2 = do
+    --traceM $ "\nUnifying (l = " ++ show l ++ ", epsilon1 = " ++ show epsilon1 ++ ") " ++
+    --    " with epsilon2 = " ++ show epsilon2
+    (epsilon3, theta1) <- unifyEffect epsilon2 l
+    -- Sanity check, this is stated in Koka's paper to be true
+    --traceM $ "unifyEffect returned = " ++ show (epsilon3, theta1)
+    if C.rowsEquiv (C.subst theta1 epsilon2) (C.Row (C.subst theta1 l) (C.subst theta1 epsilon3))
+        then return ()
+        else do
+            --traceM $ "We know that " ++ show (C.subst theta1 epsilon2)
+            --traceM $ "should equal " ++ show (C.Row (C.subst theta1 l) (C.subst theta1 epsilon3))
+            -- TODO: better this message. 
+            error "Fatal error DEU RUIM"
+
+    when (M.member (tl epsilon1) theta1) $ do
+    -- traceM $ "tl(epsilon1) = " ++ show (tl epsilon1)
+        throwError $ EffectTailCheck (tl epsilon1)
+    -- traceM $ "Now unifying " ++ show (C.subst theta1 epsilon1) ++ " and " ++
+    --    show (C.subst theta1 epsilon3)
+    theta2 <- unify (C.subst theta1 epsilon1) (C.subst theta1 epsilon3)
+    -- traceM $ "theta2 = " ++ show theta2
+    -- traceM $ "RESULT = " ++ show (theta2 `C.compose` theta1)
+    return (theta2 `C.compose` theta1)
+    where
+        tl (C.Row _ tail) =
+            tl tail
+        tl C.Pure =
+            "---"
+        tl (C.Generic a) =
+            a
+
 unify a b = do
     throwError $ CannotUnify a b
 
--- FROM: https://arxiv.org/pdf/1406.2061.pdf
-unifyRow (C.Row l' k) l =
-    -- EFF-HEAD
+-- The unify effects comes directly from Koka paper:
+-- https://arxiv.org/pdf/1406.2061.pdf
+-- pag 110
+unifyEffect (C.Row l' epsilon) l =
+    -- (EFF-HEAD)
     if l == l' then do
-        s <- unify l l'
-        return (k, s)
-    -- EFF-SWAP
+        theta <- unify l l'
+        return (epsilon, theta)
+    -- (EFF-SWAP)
     else do
-        (k', s) <- unifyRow k l
-        return (C.Row l k', s)
-unifyRow (C.Generic mi) l = do
-    -- EFF-TAIL
-    mi' <- newTypeVar
-    return (mi', M.singleton mi (C.Row l mi'))
-unifyRow a b =
+    -- We've been found a error in the algorithm: 
+    -- Koka's paper says we should return l on tail,
+    -- but we actually return l' here, otherwise the algorithm "DÁ RUIM". 
+        (epsilon', theta) <- unifyEffect epsilon l
+        return (C.Row l' epsilon', theta)
+unifyEffect (C.Generic mu) l = do
+    mu' <- newTypeVar
+    return (mu', M.singleton mu (C.Row l mu'))
+unifyEffect a b = do
     throwError $ CannotUnify a b
 
 varBind a t | t == C.Generic a =
@@ -98,8 +125,6 @@ varBind a t | t == C.Generic a =
                 throwError $ InfiniteType a t
             | otherwise =
                 return $ M.singleton a t
-
-infer :: C.Environment -> C.Expr -> ExceptT TypeError (ReaderT () (StateT Int Identity)) (C.Subst, C.Type, C.Effect)
 
 infer (C.Environment env) (C.Free s) =
     case M.lookup s env of
@@ -124,44 +149,71 @@ infer _ (C.True) = do
 infer _ (C.False) = do
     mi <- newTypeVar
     return (M.empty, C.Bool, mi)
-infer env (C.Pack e1 e2) = do
-    --(s1, t1, _) <- infer env e1
-    --(s2, t2, _) <- infer (C.subst s1 env) e2
-    --return (s1 `C.compose` s2, C.Pair (C.subst s2 t1) t2, error "TODO: effect")
-    error "TODO: implement infer for tuples"
-infer env (C.Lambda s e) = do
-    tv <- newTypeVar
-    let (C.Environment env') = C.remove env s
-    let env'' = C.Environment (env' `M.union` (M.singleton s (C.Forall [] tv)))
-    (s1, t1, k1) <- infer env'' e
+infer env (C.Lambda x e) = do
+    alpha <- newTypeVar
+    (theta, tau2, epsilon2) <- infer (C.extend env x alpha) e
     mi <- newTypeVar
-    return (s1, C.Arrow (C.subst s1 tv) k1 t1, mi)
+    return (theta, C.Arrow (C.subst theta alpha) epsilon2 tau2, mi)
 infer env expr@(C.Application e1 e2) = do
-    tv <- newTypeVar
-    (s1, t1, k1) <- infer env e1
-    (s2, t2, k2) <- infer (C.subst s1 env) e2
-    s3 <- unify (C.subst s2 t1) (C.Arrow t2 k2 tv)
-    let foo = (C.subst (s3 `C.compose` s2) k1)
-    let bar = (C.subst s3 k2)
-    s4 <- unify (C.subst (s3 `C.compose` s2) k1) (C.subst s3 k2)
-    return (s4 `C.compose` s3 `C.compose` s2 `C.compose` s1,
-            C.subst (s4 `C.compose` s3) tv,
-            C.subst (s4 `C.compose` s3) k2)
-
-    `catchError`
-    \e ->
-        throwError $ Inside expr e
+    (theta1, tau1, epsilon1) <- infer env e1
+    (theta2, tau2, epsilon2) <- infer (C.subst theta1 env) e2
+    alpha <- newTypeVar
+    theta3 <- unify (C.subst theta2 tau1) (C.Arrow tau2 epsilon2 alpha)
+    theta4 <- unify (C.subst (theta3 `C.compose` theta2) epsilon1) (C.subst theta3 epsilon2)
+    return (theta4 `C.compose` theta3 `C.compose` theta2 `C.compose` theta1,
+                C.subst (theta4 `C.compose` theta3) alpha,
+                    C.subst (theta4 `C.compose` theta3) epsilon2)
 infer env (C.Let x e1 e2) = do
     (s1, t1, k1) <- infer env e1
     let C.Environment env' = C.remove env x
     let t' = generalize (C.subst s1 env) t1
     let env'' = C.Environment (M.insert x t' env')
-    -- Vale notar: Koka exige que o valor do let seja puro
-    -- Isso está correto?
     s2 <- unify k1 C.Pure
     (s3, t2, k2) <- infer (C.subst (s2 `C.compose` s1) env'') e2
     return (s3 `C.compose` s2 `C.compose` s1, t2, k2)
 
+infer env (C.Where bindings e) = do
+    -- Assume we have:
+    -- e where { e_1; e_2; ...; e_n }
+    -- We first have to gather a fresh var alpha_i for each block e_i
+    alpha <- mapM (const newTypeVar) bindings
+    --
+    -- We'll extend our context with the proper vars, i.e.,
+    --   G, e_1: alpha_1, e_2: alpha_2, ..., e_n: alpha_n |-
+    let env' = foldl (\acc (var, (block, _)) ->
+                   C.extend acc block var) env (zip alpha bindings)
+    -- We now fold left the blocks, accumulating the substitution
+    (env'', theta) <- foldlM inferBlock (env', M.empty) (zip alpha bindings)
+    --traceM $ "\nRetuned theta = " ++ show theta
+    --traceM $ "Returned env'' = " ++ show env''
+    if (C.subst theta env') /= env''
+        then
+            error "DEU MUITO RUIM!!!"
+        else
+            return ()
+    (theta2, tau2, epsilon2) <- infer env'' e
+    --traceM $ "  theta2 = " ++ show theta2
+    --traceM $ "  tau2 = " ++ show tau2
+    --traceM $ "  epsilon2 = " ++ show epsilon2
+    --traceM $ "  composition = " ++ show (theta2 `C.compose` theta)
+    return (theta2 `C.compose` theta, tau2, epsilon2)
+
+    where
+        inferBlock (env', theta_i) (alpha, (var, block)) = do
+            --traceM $ "  env' = " ++ show env'
+            (theta_i', tau, epsilon) <- infer env' block
+            --traceM $ "  returned theta_i' = " ++ show theta_i'
+            --traceM $ "  returned tau = " ++ show tau
+            --traceM $ "  returned epsilon = " ++ show epsilon
+            let alpha' = C.subst (theta_i' `C.compose` theta_i) alpha
+            theta_i'' <- unify alpha' tau
+            --traceM $ "  after unification = " ++ show theta_i''
+            let env'' = C.subst (theta_i'' `C.compose` theta_i') env'
+            --traceM $ "  new env'' = " ++ show env''
+            return (env'', theta_i'' `C.compose` theta_i' `C.compose` theta_i)
+
+infer env (C.Pack (e1:e2:[])) = do 
+    error "infer pack"
 infer env (C.Operation C.Sum a b) = do
     infer env (C.Application (C.Application (C.Free "(+)") a) b)
 infer env (C.Operation C.Sub a b) = do
@@ -184,31 +236,35 @@ my_env =
         ("print", C.Forall ["a", "u"] $ C.Arrow (C.Generic "a") (C.Row C.Console $ C.Generic "u") C.Unit),
         ("foo", C.Forall ["u"] $ C.Arrow C.Int (C.Row C.Foo $ C.Generic "u") C.Int),
         ("bar", C.Forall ["u"] $ C.Arrow C.Int (C.Row C.Bar $ C.Generic "u") C.Int),
-        -- Exemplo de como podemos remover um efeito de uma closure :)
+        ("apply", C.Forall ["a", "b", "u"] $ C.Arrow (C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "b")) (C.Generic "u") $
+            C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "b")),
+        -- Example for how we can remove a effect from a closure
         --("removeFoo",
         --    C.Forall ["a", "b", "u"] $
         --        C.Arrow
         --            (C.Arrow (C.Generic "a") (C.Row C.Foo (C.Generic "u")) (C.Generic "a"))
         --            (C.Pure)
         --            (C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "a")))
-
-    --    ("fix", C.Forall ["'a"] $
-    --      C.Arrow (C.Arrow (C.Generic "'a") (C.Generic "'a")) (C.Generic "'a")),
-        ("(+)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
-            (C.Arrow C.Int (C.Generic "b") C.Int)),
+        --("fix", C.Forall ["'a"] $
+        --    C.Arrow (C.Arrow (C.Generic "'a") (C.Generic "'a")) (C.Generic "'a")),
+        ("(+)", C.Forall ["u"] $ C.Arrow C.Int (C.Generic "u")
+            (C.Arrow C.Int (C.Generic "u") C.Int)),
         ("(-)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
             (C.Arrow C.Int (C.Generic "b") C.Int)),
         ("(*)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
             (C.Arrow C.Int (C.Generic "b") C.Int)),
         ("(/)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
             (C.Arrow C.Int (C.Generic "b") C.Int)),
-        ("(<)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
-            (C.Arrow C.Int (C.Generic "b") C.Bool)),
-        ("(>)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
-            (C.Arrow C.Int (C.Generic "b") C.Bool)),
-        ("(=)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
-            (C.Arrow C.Int (C.Generic "b") C.Bool))
-        -- TODO: (?:) para if statement
+        ("(<)", C.Forall ["u"] $ C.Arrow C.Int (C.Generic "u")
+            (C.Arrow C.Int (C.Generic "u") C.Bool)),
+        ("(>)", C.Forall ["u"] $ C.Arrow C.Int (C.Generic "u")
+            (C.Arrow C.Int (C.Generic "u") C.Bool)),
+        ("(=)", C.Forall ["u"] $ C.Arrow C.Int (C.Generic "u")
+            (C.Arrow C.Int (C.Generic "u") C.Bool)),
+        ("(?:)", C.Forall ["a", "u"] $ C.Arrow C.Bool (C.Generic "u")
+            (C.Arrow (C.Generic "a") (C.Generic "u")
+                (C.Arrow (C.Generic "a") (C.Generic "u")
+                    (C.Generic "a"))))
     ])
 
 runInferer :: C.Expr -> Either TypeError C.Type
@@ -219,4 +275,5 @@ runInferer e =
             runInferer' $ do
                 (s, t, k) <- infer my_env e
                 put 0
-                instantiate $ generalize my_env (C.subst s t)
+                instantiate $ 
+                    generalize my_env (C.subst s (C.Computation t k))
