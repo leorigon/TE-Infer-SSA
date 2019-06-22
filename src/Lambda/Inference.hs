@@ -21,7 +21,6 @@ data TypeError = CannotUnify C.Type C.Type
 type InfererT m a = ExceptT TypeError (ReaderT () (StateT Int m)) a
 type ExceptionControl = ExceptT TypeError (ReaderT () (StateT Int Identity)) (M.Map String C.Type, C.Type, C.Type)
 
-renInferer' :: C.Expr -> Either TypeError C.Type
 runInferer' i = do
     (res, _) <- runStateT (runReaderT (runExceptT i) ()) 0
     return res
