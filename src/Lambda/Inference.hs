@@ -44,8 +44,8 @@ instantiate (C.Forall vars t) = do
 unify (C.Arrow a e b) (C.Arrow x f y) = do
     theta1 <- unify a x
     theta2 <- unify (C.subst theta1 e) (C.subst theta1 f)
-    theta3 <- unify (C.subst (theta2 `C.compose` theta1) b) (C.subst (theta2 `C.compose` theta1) y)
-    return $ theta3 `C.compose` theta2 `C.compose` theta1
+    theta3 <- unify (C.subst (theta2 C.@@ theta1) b) (C.subst (theta2 C.@@ theta1) y)
+    return $ theta3 C.@@ theta2 C.@@ theta1
 unify (C.Generic a) t = do
     varBind a t
 unify t (C.Generic a) = do
@@ -85,8 +85,8 @@ unify foo@(C.Row l epsilon1) epsilon2 = do
     --    show (C.subst theta1 epsilon3)
     theta2 <- unify (C.subst theta1 epsilon1) (C.subst theta1 epsilon3)
     -- traceM $ "theta2 = " ++ show theta2
-    -- traceM $ "RESULT = " ++ show (theta2 `C.compose` theta1)
-    return (theta2 `C.compose` theta1)
+    -- traceM $ "RESULT = " ++ show (theta2 C.@@ theta1)
+    return (theta2 C.@@ theta1)
     where
         tl (C.Row _ tail) =
             tl tail
@@ -100,6 +100,7 @@ unify a b = do
 
 -- The unify effects comes directly from Koka paper:
 -- https://arxiv.org/pdf/1406.2061.pdf
+-- or in this repository with name 1406.2061.pdf
 -- pag 110
 unifyEffect (C.Row l' epsilon) l =
     -- (EFF-HEAD)
@@ -126,6 +127,7 @@ varBind a t | t == C.Generic a =
             | otherwise =
                 return $ M.singleton a t
 
+--
 infer (C.Environment env) (C.Free s) =
     case M.lookup s env of
         Just sigma -> do
@@ -159,18 +161,18 @@ infer env expr@(C.Application e1 e2) = do
     (theta2, tau2, epsilon2) <- infer (C.subst theta1 env) e2
     alpha <- newTypeVar
     theta3 <- unify (C.subst theta2 tau1) (C.Arrow tau2 epsilon2 alpha)
-    theta4 <- unify (C.subst (theta3 `C.compose` theta2) epsilon1) (C.subst theta3 epsilon2)
-    return (theta4 `C.compose` theta3 `C.compose` theta2 `C.compose` theta1,
-                C.subst (theta4 `C.compose` theta3) alpha,
-                    C.subst (theta4 `C.compose` theta3) epsilon2)
+    theta4 <- unify (C.subst (theta3 C.@@ theta2) epsilon1) (C.subst theta3 epsilon2)
+    return (theta4 C.@@ theta3 C.@@ theta2 C.@@ theta1,
+                C.subst (theta4 C.@@ theta3) alpha,
+                    C.subst (theta4 C.@@ theta3) epsilon2)
 infer env (C.Let x e1 e2) = do
     (s1, t1, k1) <- infer env e1
     let C.Environment env' = C.remove env x
     let t' = generalize (C.subst s1 env) t1
     let env'' = C.Environment (M.insert x t' env')
     s2 <- unify k1 C.Pure
-    (s3, t2, k2) <- infer (C.subst (s2 `C.compose` s1) env'') e2
-    return (s3 `C.compose` s2 `C.compose` s1, t2, k2)
+    (s3, t2, k2) <- infer (C.subst (s2 C.@@ s1) env'') e2
+    return (s3 C.@@ s2 C.@@ s1, t2, k2)
 
 infer env (C.Where bindings e) = do
     -- Assume we have:
@@ -195,8 +197,8 @@ infer env (C.Where bindings e) = do
     --traceM $ "  theta2 = " ++ show theta2
     --traceM $ "  tau2 = " ++ show tau2
     --traceM $ "  epsilon2 = " ++ show epsilon2
-    --traceM $ "  composition = " ++ show (theta2 `C.compose` theta)
-    return (theta2 `C.compose` theta, tau2, epsilon2)
+    --traceM $ "  composition = " ++ show (theta2 C.@@ theta)
+    return (theta2 C.@@ theta, tau2, epsilon2)
 
     where
         inferBlock (env', theta_i) (alpha, (var, block)) = do
@@ -205,12 +207,12 @@ infer env (C.Where bindings e) = do
             --traceM $ "  returned theta_i' = " ++ show theta_i'
             --traceM $ "  returned tau = " ++ show tau
             --traceM $ "  returned epsilon = " ++ show epsilon
-            let alpha' = C.subst (theta_i' `C.compose` theta_i) alpha
+            let alpha' = C.subst (theta_i' C.@@ theta_i) alpha
             theta_i'' <- unify alpha' tau
             --traceM $ "  after unification = " ++ show theta_i''
-            let env'' = C.subst (theta_i'' `C.compose` theta_i') env'
+            let env'' = C.subst (theta_i'' C.@@ theta_i') env'
             --traceM $ "  new env'' = " ++ show env''
-            return (env'', theta_i'' `C.compose` theta_i' `C.compose` theta_i)
+            return (env'', theta_i'' C.@@ theta_i' C.@@ theta_i)
 
 infer env (C.Pack (e1:e2:[])) = do 
     error "infer pack"

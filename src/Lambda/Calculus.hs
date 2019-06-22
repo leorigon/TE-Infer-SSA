@@ -21,6 +21,7 @@ data Expr = Free String
           | Operation Operator Expr Expr
           | Where [(String, Expr)] Expr
 
+-- TODO: Change it for Application.
 data Operator = Sum
               | Sub
               | Mul
@@ -93,20 +94,12 @@ instance Substitutable a => Substitutable [a] where
 
 type Subst = M.Map String Type
 
-a `compose` b = (M.map (subst a) b) `M.union` a
-
 data Environment = Environment (M.Map String Scheme)
                  deriving (Show, Eq)
-
-remove (Environment g) var = Environment (M.delete var g)
 
 instance Substitutable Environment where
     ftv (Environment g) = ftv (M.elems g)
     subst m (Environment g) = Environment (M.map (subst m) g)
-
-extend env s a =
-    let (Environment env') = remove env s in
-    Environment (env' `M.union` (M.singleton s (Forall [] a)))
 
 instance Show Type where
     show (Int) = "int"
@@ -286,6 +279,19 @@ instance Show Expr where
                 worker e
                 putIndentation i
 
+remove :: Environment -> String -> Environment
+remove (Environment g) var = Environment (M.delete var g)
+
+infixr 4 @@
+(@@) :: Subst -> M.Map String Type -> M.Map String Type
+a @@ b = (M.map (subst a) b) `M.union` a
+
+extend :: Environment -> String -> Type -> Environment
+extend env s a =
+    let (Environment env') = remove env s in
+    Environment (env' `M.union` (M.singleton s (Forall [] a)))
+
+rowsEquiv :: Effect -> Effect -> Bool
 rowsEquiv epsilon1 epsilon2 =
     toSet epsilon1 == toSet epsilon2
     where
