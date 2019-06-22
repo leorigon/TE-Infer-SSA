@@ -1,9 +1,9 @@
 # TODO:
 
-~- Terminar a nomeação única das variáveis;~
-~- Transformar a linguagem em cálculo Lambda;~
+- ~Terminar a nomeação única das variáveis;~
+- ~Transformar a linguagem em cálculo Lambda;~
 - Aumentar gramática linguagem? (Switch/Do While/~Handler~/~adicionar efeitos~);
-~- Tratar efeitos abertos/fechados;~ 
+- ~Tratar efeitos abertos/fechados;~ 
 - Tratar passagem de variáveis por referência/valor;
 - Descrever a implementação e formalizar o algorítmo. 
 
