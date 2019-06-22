@@ -14,7 +14,7 @@ digraph g {
   d3 -> d4;
   b5 [shape=box, label="b5: (< i₂ n₀)?"];
   b5 -> b6 [label=true];
-  b5 -> b10 [label=false];
+  b5 -> b11 [label=false];
   d5 [label=b5];
   d4 -> d5;
   b4 [shape=box, label="b4:\ni₂ = 0"];
@@ -33,9 +33,13 @@ digraph g {
   b8 -> b9;
   d9 [label=b9];
   d8 -> d9;
-  b9 [shape=box, label="b9:\ni₂ = (+ i₂ 1)"];
-  b9 -> b5;
+  b9 [shape=box, label="b9:\n(print res2₁)"];
+  b9 -> b10;
   d10 [label=b10];
-  d5 -> d10;
-  b10 [label="b10: RETURN res1₁"];
+  d9 -> d10;
+  b10 [shape=box, label="b10:\ni₂ = (+ i₂ 1)"];
+  b10 -> b5;
+  d11 [label=b11];
+  d5 -> d11;
+  b11 [label="b11: RETURN res1₁"];
 }

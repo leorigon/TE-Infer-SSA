@@ -1,5 +1,5 @@
 import System.IO
-{-
+
 import qualified Lexer as L
 import qualified Parser as P
 import qualified BasicBlock as B
@@ -88,15 +88,16 @@ showToplevel (P.Algorithm f p s) = do
   --
   putStrLn "\nDom tree:"
   putStrLn $ "  " ++ show dom_tree
--}
 
+
+{-
 import qualified Lambda.Calculus as LC
 import qualified Lambda.Lexer as LL
 import qualified Lambda.Parser as LP
 import qualified Lambda.Inference as LI
+-}
 
 main = do
-  {---
   putStrLn "Lexer:"
   input <- readFile "test.pfc"
   let l = L.lex input
@@ -107,7 +108,8 @@ main = do
   print p
   --
   mapM showToplevel p
-  -}
+
+  {-
   input <- readFile "test.txt"
   putStrLn "Lexer:"
   let l = LL.lex input
@@ -120,3 +122,4 @@ main = do
   putStrLn "\nInfered type:"
   let it = LI.runInferer p
   print it
+  -}

@@ -5,6 +5,7 @@ algorithm fib(int n) {
     int aux = res1 + res2;
     res1 = res2;
     res2 = aux;
+    print(res2);
   }
   return res1;
 }
