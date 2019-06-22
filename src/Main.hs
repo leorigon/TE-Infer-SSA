@@ -72,33 +72,33 @@ writeDotFile nodes dominators = do
   hClose handle
 
 showToplevel algorithm@(P.Algorithm f p s) = do
-      putStrLn "\nNodes:"
+      --putStrLn "\nNodes:"
       let (label_map, nodes) = B.astToNodes s p
-      mapM showNode nodes
+      --mapM showNode nodes
       let edges = B.nodesToEdges nodes
-      putStrLn "\nEdges:"
-      print edges
+      --putStrLn "\nEdges:"
+      --print edges
       let (graph, _, _) = G.graphFromEdges edges
-      putStrLn "\nGraph:"
-      putStrLn $ "  " ++ show graph
+      --putStrLn "\nGraph:"
+      --putStrLn $ "  " ++ show graph
       let (dominators, i_dominators, dom_tree, frontier) = D.dominators graph
-      putStrLn "\nDominators:"
-      putStrLn $ "  " ++ show dominators
-      putStrLn "\nImmediate Dominators:"
-      putStrLn $ "  " ++ show i_dominators
-      putStrLn "\nDominator tree:"
-      putStrLn $ "  " ++ show dom_tree
-      putStrLn "\nDominance Frontier:"
-      putStrLn $ "  " ++ show frontier
-      putStrLn "\nKnown variables:"
+      -- putStrLn "\nDominators:"
+      -- putStrLn $ "  " ++ show dominators
+      -- putStrLn "\nImmediate Dominators:"
+      -- putStrLn $ "  " ++ show i_dominators
+      -- putStrLn "\nDominator tree:"
+      -- putStrLn $ "  " ++ show dom_tree
+      -- putStrLn "\nDominance Frontier:"
+      -- putStrLn $ "  " ++ show frontier
+      -- putStrLn "\nKnown variables:"
       let known_variables = S.findKnownVariables nodes
-      putStrLn $ "  " ++ show known_variables
+      --putStrLn $ "  " ++ show known_variables
       let phi_nodes = S.enumaratePhiNodes nodes dominators i_dominators frontier
-      putStrLn "\nPhi Nodes Needed:"
-      putStrLn $ "  " ++ show phi_nodes
-      putStrLn "\nRenamed:"
+      --putStrLn "\nPhi Nodes Needed:"
+      --putStrLn $ "  " ++ show phi_nodes
+      --putStrLn "\nRenamed:"
       let renamed = S.rename graph nodes known_variables dom_tree phi_nodes
-      putStrLn $ "  " ++ show renamed
+      --putStrLn $ "  " ++ show renamed
       writeDotFile renamed i_dominators
       putStrLn "\nConverted:"
       let converted = C.to_lambda algorithm renamed dom_tree
@@ -108,13 +108,13 @@ showToplevel algorithm@(P.Algorithm f p s) = do
       print it
 
 main = do
-      putStrLn "Lexer:"
+      -- putStrLn "Lexer:"
       input <- readFile "test.pfc"
       let l = L.lex input
-      print l
-      putStrLn "\nParser:"
+      -- print l
+      -- putStrLn "\nParser:"
       let p = P.parse l
-      print p
+      -- print p
       mapM showToplevel p
 
 {- 
