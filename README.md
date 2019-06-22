@@ -8,6 +8,12 @@
 - Descrever a implementação e formalizar o algorítmo. 
 
 Para funcionar: 
-- editar o arquivo `test.txt`:
-executar: 
+- editar o arquivo `test.txt` e inserir o código desejado:
+- executar: 
+
+```
 stack build && stack exec pfc
+```
+
+A inferência de tipos/efeitos está no arquivo: 
+`Inference.hs` dentro da pasta `Lambda` 
