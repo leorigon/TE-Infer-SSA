@@ -19,7 +19,9 @@ data TypeError = CannotUnify C.Type C.Type
                deriving Show
 
 type InfererT m a = ExceptT TypeError (ReaderT () (StateT Int m)) a
+type ExceptionControl = ExceptT TypeError (ReaderT () (StateT Int Identity)) (M.Map String C.Type, C.Type, C.Type)
 
+renInferer' :: C.Expr -> Either TypeError C.Type
 runInferer' i = do
     (res, _) <- runStateT (runReaderT (runExceptT i) ()) 0
     return res
@@ -31,6 +33,7 @@ newTypeVar = do
   where
     letters = [1..] >>= flip replicateM ['a'..'z']
 
+generalize :: C.Substitutable p => p -> C.Type -> C.Scheme
 generalize g t =
     C.Forall vars t
     where
@@ -128,6 +131,7 @@ varBind a t | t == C.Generic a =
                 return $ M.singleton a t
 
 --
+infer :: C.Environment -> C.Expr -> ExceptionControl
 infer (C.Environment env) (C.Free s) =
     case M.lookup s env of
         Just sigma -> do
@@ -233,6 +237,7 @@ infer env (C.Operation C.Eq a b) = do
 infer env (C.If a b c) = do
     infer env (C.Application (C.Application (C.Application (C.Free "(?:)") a) b) c)
 
+my_env :: C.Environment
 my_env =
     C.Environment (M.fromList [
         ("print", C.Forall ["a", "u"] $ C.Arrow (C.Generic "a") (C.Row C.Console $ C.Generic "u") C.Unit),
