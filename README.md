@@ -1,13 +1,13 @@
 # TODO:
 
-- Terminar a nomeação única das variáveis;
-- Transformar a linguagem em cálculo Lambda;
-- Aumentar gramática linguagem? (Switch/Do While);
-- Tratar efeitos abertos/fechados; 
-- Formalizar o sistema de efeitos (ver com professor Cristiano como fazer);
-- Identar, tirar gambiarras, comentários desnecessários e viadagens do código;
-- Mudar o nome, não é canal de TV;
-- Escrever o resumo :(
+~- Terminar a nomeação única das variáveis;~
+~- Transformar a linguagem em cálculo Lambda;~
+- Aumentar gramática linguagem? (Switch/Do While/~Handler~/~adicionar efeitos~);
+~- Tratar efeitos abertos/fechados;~ 
+- Tratar passagem de variáveis por referência/valor;
+- Descrever a implementação e formalizar o algorítmo. 
 
-clonar o repositório e executar:
+Para funcionar: 
+- editar o arquivo `test.txt`:
+executar: 
 stack build && stack exec pfc
