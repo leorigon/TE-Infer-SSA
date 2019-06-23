@@ -4,11 +4,10 @@
 - ~Transformar a linguagem em cálculo Lambda;~
 - Aumentar gramática linguagem? (Switch/Do While/~Handler~/~adicionar efeitos~);
 - ~Tratar efeitos abertos/fechados;~ 
-- Tratar passagem de variáveis por referência/valor;
-- Descrever a implementação e formalizar o algorítmo. 
+- Tratar passagem de variáveis por referência/valor.
 
 Para funcionar: 
-- editar o arquivo `test.txt` e inserir o código desejado:
+- editar o arquivo `test.pfc` e inserir o código desejado:
 - executar: 
 
 ```
