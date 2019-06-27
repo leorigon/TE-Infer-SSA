@@ -4,7 +4,8 @@
 - ~Transformar a linguagem em cálculo Lambda;~
 - Aumentar gramática linguagem? (Switch/Do While/~Handler~/~adicionar efeitos~);
 - ~Tratar efeitos abertos/fechados;~ 
-- Tratar passagem de variáveis por referência/valor.
+- ~Tratar passagem de variáveis por referência/valor.~
+- Fazer o handler e o construtor de efeitos funcionar. 
 
 Para funcionar: 
 - editar o arquivo `test.pfc` e inserir o código desejado:
