@@ -66,6 +66,15 @@ unify C.Foo C.Foo = do
     return M.empty
 unify C.Bar C.Bar = do
     return M.empty
+unify (C.Ref h a) (C.Ref i b) = do
+    theta1 <- unify (C.State h) (C.State i)
+    theta2 <- unify (C.subst theta1 a) (C.subst theta1 b)
+    return $ theta2 C.@@ theta1
+unify (C.State h) (C.State i) =
+    if h == i then
+        return M.empty
+    else
+        return $ M.singleton h (C.Generic i)
 unify foo@(C.Row l epsilon1) epsilon2 = do
     --traceM $ "\nUnifying (l = " ++ show l ++ ", epsilon1 = " ++ show epsilon1 ++ ") " ++
     --    " with epsilon2 = " ++ show epsilon2
@@ -148,10 +157,10 @@ infer _ (C.Text _) = do
 infer _ (C.UnitValue) = do
     mi <- newTypeVar
     return (M.empty, C.Unit, mi)
-infer _ (C.True) = do
+infer _ (C.TrueValue) = do
     mi <- newTypeVar
     return (M.empty, C.Bool, mi)
-infer _ (C.False) = do
+infer _ (C.FalseValue) = do
     mi <- newTypeVar
     return (M.empty, C.Bool, mi)
 infer env (C.Lambda x e) = do
@@ -244,6 +253,21 @@ my_env =
         ("bar", C.Forall ["u"] $ C.Arrow C.Int (C.Row C.Bar $ C.Generic "u") C.Int),
         ("apply", C.Forall ["a", "b", "u"] $ C.Arrow (C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "b")) (C.Generic "u") $
             C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "b")),
+        ("_newSTVar",
+            -- newSTVar: a -> <st<h>, u> ref<h, a>
+            C.Forall ["a", "h", "u"] $
+                C.Arrow (C.Generic "a") (C.Row (C.State "h") (C.Generic "u")) $
+                    C.Ref "h" (C.Generic "a")),
+        ("_writeSTVar",
+            -- writeSTVar: ref<h, a> -> u a -> <st<h>, v> unit
+            C.Forall ["a", "h", "u", "v"] $
+                C.Arrow (C.Ref "h" (C.Generic "a")) (C.Generic "u") $
+                    C.Arrow (C.Generic "a") (C.Row (C.State "h") (C.Generic "v")) C.Unit),
+        ("_readSTVar",
+            -- readSTVar: ref<h, a> -> <st<h>, u> a
+            C.Forall ["a", "h", "u"] $
+                C.Arrow (C.Ref "h" (C.Generic "a"))
+                    (C.Row (C.State "h") (C.Generic "u")) (C.Generic "a")),
         -- Example for how we can remove a effect from a closure
         --("removeFoo",
         --    C.Forall ["a", "b", "u"] $
@@ -273,7 +297,7 @@ my_env =
                     (C.Generic "a"))))
     ])
 
-runInferer :: C.Expr -> Either TypeError C.Type
+runInferer :: C.Expr -> Either TypeError C.Scheme
 runInferer e =
     runIdentity runInfererM
     where
@@ -281,5 +305,5 @@ runInferer e =
             runInferer' $ do
                 (s, t, k) <- infer my_env e
                 put 0
-                instantiate $ 
-                    generalize my_env (C.subst s (C.Computation t k))
+                result <- instantiate $ generalize my_env (C.subst s (C.Computation t k))
+                return $ generalize my_env result

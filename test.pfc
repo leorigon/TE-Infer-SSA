@@ -9,6 +9,7 @@
 //   return res1;
 // }
 
-algorithm test(var x) {
-	print(foo(x) + bar(x));
+algorithm sum(var x) {
+  var r = ref (x + 10);
+  return *r;
 }

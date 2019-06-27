@@ -99,3 +99,8 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
             --flip LC.Application LC.UnitValue $
                 call
         convert_expr (P.UnitExpression) = LC.UnitValue
+        convert_expr (P.BoolExpression b) =
+            if b then
+                LC.TrueValue
+            else
+                LC.FalseValue

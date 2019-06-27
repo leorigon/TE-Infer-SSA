@@ -70,8 +70,8 @@ Application: Application Expr     { C.Application $1 $2 }
 
 Expr: identifier    { C.Free $1 }
     | number        { C.Number (read $1) }
-    | true          { C.True }
-    | false         { C.False }
+    | true          { C.TrueValue }
+    | false         { C.FalseValue }
     | '(' Tuple ')' { $2 }
     | Let           { $1 }
     | Lambda        { $1 }

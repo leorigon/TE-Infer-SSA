@@ -16,6 +16,8 @@ tokens :-
   "var"                                 { tokenof TokenVar }
   "int"                                 { tokenof TokenInt }
   "bool"                                { tokenof TokenBool }
+  "true"                                { tokenof TokenTrue }
+  "false"                               { tokenof TokenFalse }
   "string"                              { tokenof TokenString }
   "unit"                                { tokenof TokenUnit }
   "if"                                  { tokenof TokenIf }
@@ -63,6 +65,8 @@ data Token = TokenAlgorithm
            | TokenVar
            | TokenInt
            | TokenBool
+           | TokenTrue
+           | TokenFalse
            | TokenString
            | TokenScript
            | TokenUnit
