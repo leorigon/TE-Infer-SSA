@@ -29,6 +29,7 @@ data Operator = Sum
               | Lt
               | Gt
               | Eq
+              | EqEq
 
 data Type = Int
           | Bool

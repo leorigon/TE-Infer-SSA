@@ -81,6 +81,10 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
             LC.Number num
         convert_expr (P.IndexedVarExpression var num) =
             LC.Free (var ++ show num)
+        convert_expr (P.StrExpression str) =
+            LC.Text str   
+        convert_expr (P.EqualsExpression left right) =
+            LC.Operation LC.Eq (convert_expr left) (convert_expr right)
         convert_expr (P.AddExpression left right) =
             LC.Operation LC.Sum (convert_expr left) (convert_expr right)
         convert_expr (P.MulExpression left right) =

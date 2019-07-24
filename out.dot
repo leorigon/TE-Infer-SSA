@@ -1,12 +1,21 @@
 digraph g {
+  d0 [label=b0];
+  d2 -> d0;
+  b0 [label="b0: RETURN ()"];
   d1 [label=b1];
-  b1 [label="b1: Entry: [var x]"];
+  b1 [label="b1: Entry: [var a]"];
   b1 -> b2;
   d2 [label=b2];
   d1 -> d2;
-  b2 [shape=box, label="b2:\nr₁ = (_newSTVar (+ x₀ 10))"];
-  b2 -> b3;
+  b2 [shape=box, label="b2:\n(== a₀ 1)?"];
+  b2 -> b3 [label=true];
+  b2 -> b4 [label=false];
   d3 [label=b3];
   d2 -> d3;
-  b3 [label="b3: RETURN (_readSTVar r₁)"];
+  b3 [shape=box, label="b3:\n(print \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\")"];
+  b3 -> b0;
+  d4 [label=b4];
+  d2 -> d4;
+  b4 [shape=box, label="b4:\n(print \"aaaaaaaaaaaaaaaaaaaaa\")"];
+  b4 -> b0;
 }

@@ -9,7 +9,15 @@
 //   return res1;
 // }
 
-algorithm sum(var x) {
-  var r = ref (x + 10);
-  return *r;
+// algorithm sum(var x) {
+//   var r = ref (x + 10);
+//   return *r;
+// }
+
+algorithm foo(var a) {
+  if (a==1) { 
+    print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  } else {
+    print("aaaaaaaaaaaaaaaaaaaaa");
+  }
 }
