@@ -70,6 +70,8 @@ unify (C.Ref a) (C.Ref b) = do
     unify a b
 unify (C.State) (C.State) =
     return M.empty
+unify C.String C.String = do
+    return M.empty
 unify foo@(C.Row l epsilon1) epsilon2 = do
     --traceM $ "\nUnifying (l = " ++ show l ++ ", epsilon1 = " ++ show epsilon1 ++ ") " ++
     --    " with epsilon2 = " ++ show epsilon2
@@ -160,7 +162,7 @@ infer _ (C.FalseValue) = do
     return (M.empty, C.Bool, mi)
 infer env (C.Lambda x e) = do
     alpha <- newTypeVar
-    (theta, tau2, epsilon2) <- infer (C.extend env x alpha) e
+    (theta, tau2, epsilon2) <- infer (C.extend' env x alpha) e
     mi <- newTypeVar
     return (theta, C.Arrow (C.subst theta alpha) epsilon2 tau2, mi)
 infer env expr@(C.Application e1 e2) = do
@@ -190,7 +192,7 @@ infer env (C.Where bindings e) = do
     -- We'll extend our context with the proper vars, i.e.,
     --   G, e_1: alpha_1, e_2: alpha_2, ..., e_n: alpha_n |-
     let env' = foldl (\acc (var, (block, _)) ->
-                   C.extend acc block var) env (zip alpha bindings)
+                   C.extend' acc block var) env (zip alpha bindings)
     -- We now fold left the blocks, accumulating the substitution
     (env'', theta) <- foldlM inferBlock (env', M.empty) (zip alpha bindings)
     --traceM $ "\nRetuned theta = " ++ show theta
@@ -238,12 +240,12 @@ infer env (C.Operation C.Eq a b) = do
 infer env (C.If a b c) = do
     infer env (C.Application (C.Application (C.Application (C.Free "(?:)") a) b) c)
 
-my_env :: C.Environment
-my_env =
+initialEnvironment :: C.Environment
+initialEnvironment =
     C.Environment (M.fromList [
         ("print", C.Forall ["a", "u"] $ C.Arrow (C.Generic "a") (C.Row C.Console $ C.Generic "u") C.Unit),
-        ("foo", C.Forall ["u"] $ C.Arrow C.Int (C.Row C.Foo $ C.Generic "u") C.Int),
-        ("bar", C.Forall ["u"] $ C.Arrow C.Int (C.Row C.Bar $ C.Generic "u") C.Int),
+        --("foo", C.Forall ["u"] $ C.Arrow C.Int (C.Row C.Foo $ C.Generic "u") C.Int),
+        --("bar", C.Forall ["u"] $ C.Arrow C.Int (C.Row C.Bar $ C.Generic "u") C.Int),
         ("apply", C.Forall ["a", "b", "u"] $ C.Arrow (C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "b")) (C.Generic "u") $
             C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "b")),
         ("_newSTVar",
@@ -290,13 +292,15 @@ my_env =
                     (C.Generic "a"))))
     ])
 
-runInferer :: C.Expr -> Either TypeError C.Scheme
-runInferer e =
-    runIdentity runInfererM
+runInferer :: C.Expr -> C.Environment -> C.Scheme
+runInferer e g =
+    case runIdentity runInfererM of
+      Right scheme -> scheme
+      Left message -> error $ show message
     where
         runInfererM =
             runInferer' $ do
-                (s, t, k) <- infer my_env e
+                (s, t, k) <- infer g e
                 put 0
-                result <- instantiate $ generalize my_env (C.subst s (C.Computation t k))
-                return $ generalize my_env result
+                result <- instantiate $ generalize g t
+                return $ generalize g result

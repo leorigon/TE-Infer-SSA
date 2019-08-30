@@ -36,11 +36,15 @@
 //}
 
 effect Aaa {
-  function aaa(): bool;
+  function aaa(): unit;
+  function bbb(int, string): unit;
 }
 
 effect Bbb {
-  function bbb(string): int;
-  function ccc(): unit;
-  function ddd(int, int): string;
+  function ccc(int): string;
+}
+
+algorithm foo(var a, var b) {
+  bbb(a, ccc(b));
+  return 20;
 }

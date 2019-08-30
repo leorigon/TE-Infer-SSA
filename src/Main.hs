@@ -72,12 +72,13 @@ writeDotFile nodes dominators = do
   hPutStrLn handle "}"
   hClose handle
 
-showToplevel (P.Effect name funs) = do
+showToplevel env (P.Effect name funs) = do
       putStrLn $ "\nAdding effect " ++ name ++ "..."
-      let decls = E.effectIntoDeclarations name funs
+      let decls = E.effectIntoDeclarations name funs env
       print decls
+      return $ foldl (\e (n, t) -> LC.extend e n t) env decls
 
-showToplevel algorithm@(P.Algorithm f p s) = do
+showToplevel env algorithm@(P.Algorithm f p s) = do
       --putStrLn $ "\nChecking function " ++ f ++ "..."
       --putStrLn "\nNodes:"
       let (label_map, nodes) = B.astToNodes s p
@@ -111,8 +112,9 @@ showToplevel algorithm@(P.Algorithm f p s) = do
       let converted = C.to_lambda algorithm renamed dom_tree
       putStrLn $ show converted
       putStrLn "\nInfered type:"
-      let it = LI.runInferer converted
+      let it = LI.runInferer converted env
       print it
+      return $ LC.extend env f it
 
 main = do
       -- putStrLn "Lexer:"
@@ -122,7 +124,10 @@ main = do
       -- putStrLn "\nParser:"
       let p = P.parse l
       -- print p
-      mapM showToplevel p
+      env <- foldM showToplevel LI.initialEnvironment p
+
+      putStrLn "\nFinal environment:"
+      print env
 
 {- 
       -- For debug/infer directly lambda calculus   

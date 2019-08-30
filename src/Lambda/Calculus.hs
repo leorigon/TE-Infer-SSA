@@ -71,6 +71,7 @@ instance Substitutable Type where
     ftv (Foo) = S.empty
     ftv (Bar) = S.empty
     ftv (State) = S.empty
+    ftv (Constant _) = S.empty
     subst _ (Int) = Int
     subst _ (Bool) = Bool
     subst _ (String) = String
@@ -86,7 +87,8 @@ instance Substitutable Type where
     subst _ (Console) = Console
     subst _ (Foo) = Foo
     subst _ (Bar) = Bar
-    subst m (State) = State
+    subst _ (State) = State
+    subst _ (Constant k) = Constant k
 
 instance Substitutable Scheme where
     ftv (Forall vars t) = (ftv t) `S.difference` (S.fromList vars)
@@ -99,7 +101,11 @@ instance Substitutable a => Substitutable [a] where
 type Subst = M.Map String Type
 
 data Environment = Environment (M.Map String Scheme)
-                 deriving (Show, Eq)
+                    deriving Eq
+
+instance Show Environment where
+  show (Environment map) =
+    init $ unlines $ fmap (\(key, value) -> key ++ ": " ++ show value) (M.toList map)
 
 instance Substitutable Environment where
     ftv (Environment g) = ftv (M.elems g)
@@ -297,8 +303,11 @@ infixr 4 @@
 (@@) :: Subst -> M.Map String Type -> M.Map String Type
 a @@ b = (M.map (subst a) b) `M.union` a
 
-extend :: Environment -> String -> Type -> Environment
 extend env s a =
+    let (Environment env') = remove env s in
+        Environment (env' `M.union` (M.singleton s a))
+      
+extend' env s a =
     let (Environment env') = remove env s in
     Environment (env' `M.union` (M.singleton s (Forall [] a)))
 

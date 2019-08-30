@@ -1,8 +1,12 @@
 digraph g {
   d1 [label=b1];
-  b1 [label="b1: Entry: [var x]"];
+  b1 [label="b1: Entry: [var a,var b]"];
   b1 -> b2;
   d2 [label=b2];
   d1 -> d2;
-  b2 [label="b2: RETURN x₀"];
+  b2 [shape=box, label="b2:\n(bbb a₀ (ccc b₀))"];
+  b2 -> b3;
+  d3 [label=b3];
+  d2 -> d3;
+  b3 [label="b3: RETURN 20"];
 }

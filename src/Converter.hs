@@ -70,7 +70,7 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
 
         convert_expr (P.VarExpression var) =
             -- This should never happn!!!!
-            error "Variable not numberabled:"
+            error "unrecheable"
         convert_expr (P.NumExpression num) =
             LC.Number num
         convert_expr (P.IndexedVarExpression var num) =
