@@ -1,4 +1,4 @@
-This is prototype for project master's degree in computer application on University of State of Santa Catarina.
+This is prototype for project master's degree in computer application on UDESC.
  
 Abstract:
 ```
@@ -22,7 +22,7 @@ an algorithm capable of inferring types and side effects of this representation.
 requirements: 
   - stack
   - some text editor
-  - Graphviz app to show the .dot files 
+  - graphviz env to show the CFG in visual mode (.dot files) 
   
 to run:
 
