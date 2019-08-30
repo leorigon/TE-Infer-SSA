@@ -30,6 +30,7 @@ executable lambdaC
                     Dominance,
                     Lexer,
                     Parser,
+                    Effect,
                     SingleAssignment
   build-depends:    base >= 4.7 && < 5,
                     array >= 0.5,

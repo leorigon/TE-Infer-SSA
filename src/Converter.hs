@@ -14,13 +14,7 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
         result = foldr 
                 add_parameter body params
             where
-                add_parameter (P.DeclareVar id) node =
-                    LC.Lambda (id ++ "0") node
-                add_parameter (P.DeclareInt id) node =
-                    LC.Lambda (id ++ "0") node
-                add_parameter (P.DeclareString id) node =
-                    LC.Lambda (id ++ "0") node
-                add_parameter (P.DeclareBool id) node =
+                add_parameter (P.Declarator _ id) node =
                     LC.Lambda (id ++ "0") node
 
         entry = node_map M.! 1

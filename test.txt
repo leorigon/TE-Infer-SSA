@@ -1,1 +1,0 @@
-\x.foo x + bar 10 * bar 20

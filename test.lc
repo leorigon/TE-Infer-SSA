@@ -9,18 +9,18 @@
 //   return res1;
 // }
 
-algorithm id(var x) {
-  return x;
-}
+//algorithm id(var x) {
+//  return x;
+//}
 
-algorithm bar(var a, int b) {
-    for(int i = 0; i < b; i++) {
-        if(i > 10) { 
-            break;
-        }
-        print(a);
-    }
-}
+//algorithm bar(var a, int b) {
+//    for(int i = 0; i < b; i++) {
+//        if(i > 10) { 
+//            break;
+//        }
+//        print(a);
+//    }
+//}
 
 //algorithm foo () 
 //{
@@ -34,3 +34,13 @@ algorithm bar(var a, int b) {
 //    }
 //    end: return x;
 //}
+
+effect Aaa {
+  function aaa(): bool;
+}
+
+effect Bbb {
+  function bbb(string): int;
+  function ccc(): unit;
+  function ddd(int, int): string;
+}

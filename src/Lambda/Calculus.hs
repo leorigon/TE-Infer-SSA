@@ -13,7 +13,6 @@ data Expr = Free String
           | UnitValue
           | TrueValue
           | FalseValue
-          | Pack [Expr]
           | Let String Expr Expr
           | Lambda String Expr
           | If Expr Expr Expr
@@ -37,13 +36,13 @@ data Type = Int
           | Unit
           | Generic String
           | Arrow Type Type Type
-          | Tuple [Type]
-          | Ref String Type
+          | Constant String
+          | Ref Type
           | Console
           | Foo
           | Bar
           | Pure
-          | State String
+          | State
           | Row Effect Effect
           | Computation Type Effect
           deriving (Ord, Eq)
@@ -64,15 +63,14 @@ instance Substitutable Type where
     ftv (Unit) = S.empty
     ftv (Generic s) = S.singleton s
     ftv (Arrow a e b) = ftv a `S.union` ftv e `S.union` ftv b
-    -- ftv (Tuple (a:b:[])) = ftv a `S.union` ftv b
-    ftv (Ref h a) = S.singleton h `S.union` ftv a
+    ftv (Ref a) = ftv a
     ftv (Pure) = S.empty
     ftv (Row head tail) = ftv head `S.union` ftv tail
     ftv (Computation t k) = ftv t `S.union` ftv k
     ftv (Console) = S.empty
     ftv (Foo) = S.empty
     ftv (Bar) = S.empty
-    ftv (State h) = S.singleton h
+    ftv (State) = S.empty
     subst _ (Int) = Int
     subst _ (Bool) = Bool
     subst _ (String) = String
@@ -81,20 +79,14 @@ instance Substitutable Type where
                             Nothing -> Generic s
                             Just t -> t
     subst m (Arrow a e b) = Arrow (subst m a) (subst m e) (subst m b)
-   --subst m (Tuple (a:b:[])) = Tuple (subst m a : subst m b : [])
-    subst m (Ref h a) = Ref h (subst m a)
+    subst m (Ref a) = Ref (subst m a)
     subst _ (Pure) = Pure
     subst m (Row head tail) = Row (subst m head) (subst m tail)
     subst m (Computation t k) = Computation (subst m t) (subst m k)
     subst _ (Console) = Console
     subst _ (Foo) = Foo
     subst _ (Bar) = Bar
-    subst m (State h) = State h'
-                      where
-                        h' = case M.lookup h m of
-                          Nothing -> h
-                          Just (Generic s) -> s
-                          _ -> "Unification problem"
+    subst m (State) = State
 
 instance Substitutable Scheme where
     ftv (Forall vars t) = (ftv t) `S.difference` (S.fromList vars)
@@ -119,14 +111,12 @@ instance Show Type where
     show (String) = "string"
     show (Unit) = "unit"
     show (Generic s) = s
+    show (Constant s) = s
     show (Arrow a@(Arrow _ _ _) e b) =
         "(" ++ (show a) ++ ") → " ++ (show e) ++ " " ++ (show b)
     show (Arrow a e b) =
         (show a) ++ " → " ++ (show e) ++ " " ++ (show b)
-    -- show (Tuple (a:b:[])) =
-    --    "(" ++ (show a) ++ ", " ++ (show b) ++ ")"
-    show (Ref h a) =
-        "ref<" ++ h ++ ", " ++ show a ++ ">"
+    show (Ref a) = "ref<" ++ show a ++ ">"
     show (Pure) = "pure"
     show (Row e es@(Row _ _)) =
         "<" ++ show e ++ ", " ++ tail (show es)
@@ -136,8 +126,7 @@ instance Show Type where
         "<" ++ show e ++ ", " ++ show es ++ ">"
     show (Computation t k) =
         show t ++ " ! " ++ show k
-    show (State h) =
-        "st<" ++ h ++ ">"
+    show (State) = "st"
     show (Console) = "console"
     show (Foo) = "foo"
     show (Bar) = "bar"

@@ -7,7 +7,7 @@ module Lexer(Lexer.lex, Token(..)) where
 %wrapper "posn"
 
 $digit = 0-9
-$alpha = [a-z]
+$alpha = [A-Za-z]
 
 tokens :-
   $white+                               ;

@@ -72,14 +72,10 @@ Expr: identifier    { C.Free $1 }
     | number        { C.Number (read $1) }
     | true          { C.TrueValue }
     | false         { C.FalseValue }
-    | '(' Tuple ')' { $2 }
     | Let           { $1 }
     | Lambda        { $1 }
     | IfThenElse    { $1 }
     | '(' ')'       { C.UnitValue }
-
-Tuple: Unit ',' Tuple { C.Pack [$1, $3] }
-    | Unit           { $1 }
 
 Let: let identifier '=' Unit in Unit    { C.Let $2 $4 $6 }
     | identifier '<-' Unit ';' Operation { C.Application (C.Lambda $1 $5) $3 }

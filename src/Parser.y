@@ -84,7 +84,7 @@ ToplevelList: {- Empty -}                           { [] }
             | Toplevel ToplevelList                 { $1 : $2 }
 
 Toplevel: Algorithm                                 { $1 }
-        | Effect                                    { error "TODO" }
+        | Effect                                    { $1 }
         | Handler                                   { error "TODO" }
 
 Algorithm: algorithm identifier ParamList Body      { Algorithm $2 $3 $4 }
@@ -97,12 +97,12 @@ DeclaratorListOpt: {- empty -}                      { [] }
 DeclaratorList: Declarator                          { [$1] }
               | Declarator ',' DeclaratorList       { $1 : $3 }
 
-Declarator: var identifier                          { DeclareVar $2 }
-          | BaseType identifier                     { $1 $2 }
+Declarator: var identifier                          { Declarator TypeVar $2 }
+          | BaseType identifier                     { Declarator $1 $2 }
 
-BaseType: int                                       { DeclareInt }
-        | bool                                      { DeclareBool }
-        | string                                    { DeclareString }
+BaseType: int                                       { TypeInt }
+        | bool                                      { TypeBool }
+        | string                                    { TypeString }
 
 Body: '{' StatementSequenceOpt '}'                  { BlockStatement $2 }
 
@@ -206,21 +206,21 @@ Expression: identifier                              { VarExpression $1 }
           | '(' ')'                                 { UnitExpression }
           | '(' Expression ')'                      { $2 }
 
-Effect: effect identifier '{' EffectDecls '}'       { () }
+Effect: effect identifier '{' EffectDecls '}'       { Effect $2 $4 }
 
 EffectDecls: {- empty -}                            { [] }
            | EffectDecl ';' EffectDecls             { $1 : $3 }
 
-EffectDecl: function identifier EffectSignature     { () }
+EffectDecl: function identifier EffectSignature     { $3 $2 }
 
-EffectSignature: '(' ')' EffectReturn               { () }
-               | '(' EffectParams ')' EffectReturn  { () }
+EffectSignature: '(' ')' EffectReturn               { \x -> EffFunction x [] $3 }
+               | '(' EffectParams ')' EffectReturn  { \x -> EffFunction x $2 $4 }
 
-EffectParams: BaseType                              { () }
-            | BaseType ',' EffectParams             { () }
+EffectParams: BaseType                              { [$1] }
+            | BaseType ',' EffectParams             { $1 : $3 }
 
-EffectReturn: ':' BaseType                          { () }
-            | {- empty -}                           { () }
+EffectReturn: ':' BaseType                          { $2 }
+            | ':' unit                              { TypeUnit }
 
 Handler: HandlerPrologue '{' HandlerBody '}'        { () }
 HandlerPrologue: handler identifier '(' ')'         { () }
@@ -235,29 +235,30 @@ type Identifier = String
 type Arguments = [Expression]
 
 data Toplevel = Algorithm Identifier Parameters Statement
+              | Effect Identifier [EffFunction]
               deriving Show
 
 type Parameters = [Declarator]
 
-data Declarator = DeclareVar Identifier
-                | DeclareInt Identifier
-                | DeclareBool Identifier
-                | DeclareString Identifier
+data DeclarableType = TypeVar
+                    | TypeInt
+                    | TypeBool
+                    | TypeString
+                    | TypeUnit
 
-getDeclaratorName (DeclareVar x) = x
-getDeclaratorName (DeclareInt x) = x
-getDeclaratorName (DeclareBool x) = x
-getDeclaratorName (DeclareString x) = x
+instance Show DeclarableType where
+  show TypeVar = "var"
+  show TypeInt = "int"
+  show TypeBool = "bool"
+  show TypeString = "string"
+  show TypeUnit = "unit"
+
+data Declarator = Declarator DeclarableType Identifier
+
+getDeclaratorName (Declarator _ x) = x
 
 instance Show Declarator where
-  show (DeclareVar x) =
-    "var " ++ x
-  show (DeclareInt x) =
-    "int " ++ x
-  show (DeclareBool x) =
-    "bool " ++ x
-  show (DeclareString x) =
-    "string " ++ x
+  show (Declarator t x) = show t ++ " " ++ x
 
 data Statement = EmptyStatement
                | BlockStatement Statement
@@ -384,4 +385,9 @@ setVariablesIndexes expr scope =
         UnitExpression -> expr
         BoolExpression _ -> expr
 
+
+data EffFunction = EffFunction Identifier [DeclarableType] DeclarableType
+                   deriving Show
 }
+
+

@@ -5,6 +5,7 @@ import qualified Parser as P
 import qualified BasicBlock as B
 import qualified Data.Graph as G
 import qualified Dominance as D
+import qualified Effect as E
 import qualified SingleAssignment as S
 import qualified Converter as C
 import qualified Lambda.Calculus as LC
@@ -71,7 +72,13 @@ writeDotFile nodes dominators = do
   hPutStrLn handle "}"
   hClose handle
 
+showToplevel (P.Effect name funs) = do
+      putStrLn $ "\nAdding effect " ++ name ++ "..."
+      let decls = E.effectIntoDeclarations name funs
+      print decls
+
 showToplevel algorithm@(P.Algorithm f p s) = do
+      --putStrLn $ "\nChecking function " ++ f ++ "..."
       --putStrLn "\nNodes:"
       let (label_map, nodes) = B.astToNodes s p
       --mapM showNode nodes
@@ -109,7 +116,7 @@ showToplevel algorithm@(P.Algorithm f p s) = do
 
 main = do
       -- putStrLn "Lexer:"
-      input <- readFile "test.pfc"
+      input <- readFile "test.lc"
       let l = L.lex input
       -- print l
       -- putStrLn "\nParser:"
