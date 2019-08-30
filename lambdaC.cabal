@@ -1,11 +1,11 @@
-name:                pfc
-version:             0.1.0.0
+name:               lambdaC
+version:            0.1.0.0
 homepage:           https://github.com/leorigon/TE-Infer-SSA
-license:            BSD3
+license:            GPL3
 license-file:       LICENSE
 author:             Leonardo
 maintainer:         leorigonn@hotmailcom
-copyright:          2018
+copyright:          2019
 category:           Compilers/Interpreters
 build-type:         Simple
 cabal-version:      >=1.10
@@ -15,7 +15,7 @@ extra-source-files: README.md,
                     src/Lexer.x,
                     src/Parser.y
 
-executable pfc
+executable lambdaC
   ghc-options:      -O2
   hs-source-dirs:   src
   main-is:          Main.hs
