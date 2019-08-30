@@ -26,5 +26,5 @@ requirements:
   
 to run:
 
-  stack build and stack exec lambdac
+  stack build and stack exec lambdaC
   
