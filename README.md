@@ -22,7 +22,9 @@ an algorithm capable of inferring types and side effects of this representation.
 requirements: 
   - stack
   - some text editor
+  - Graphviz app to show the .dot files 
   
-to run: 
+to run:
+
   stack build and stack exec lambdac
   
