@@ -1,5 +1,5 @@
-This a prototype for project master's degree in computer application on University of State of Santa Catarina.
-
+This is prototype for project master's degree in computer application on University of State of Santa Catarina.
+ 
 Abstract:
 ```
 One of the main functions of a type system is to assist at construction of programs with a lower 
@@ -21,7 +21,8 @@ an algorithm capable of inferring types and side effects of this representation.
 ```
 requirements: 
   - stack
-  - someone text editor
+  - some text editor
   
 to run: 
   stack build and stack exec lambdac
+  
