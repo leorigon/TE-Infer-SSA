@@ -72,14 +72,48 @@ writeDotFile nodes dominators = do
   hPutStrLn handle "}"
   hClose handle
 
-showToplevel env (P.Effect name funs) = do
-      putStrLn $ "\nAdding effect " ++ name ++ "..."
-      let decls = E.effectIntoDeclarations name funs env
-      print decls
-      return $ foldl (\e (n, t) -> LC.extend e n t) env decls
+showToplevel (env, effs) (P.Handler name cases) = do
+      putStrLn $ "\nAdding handler " ++ name ++ "..."
+      let which@(effect, _) = E.decideEffectHandler cases effs
+    
+      bodies <- flip mapM cases $ \c -> do
+    
+        let (name, params, body) = case c of
+                                       -- If we don't have a parameter, pretend we have
+                                       -- one (that will be unit)
+                                       P.HandlerCase name [] b -> (Just name, ["_"], b)
+                                       P.HandlerCase name xs b -> (Just name, xs, b)
+                                       P.HandlerPure x b -> (Nothing, [x], b)
+        let algorithm = P.Algorithm "" (fmap (P.Declarator P.TypeVar) params) body
+        converted <- astToLambda algorithm
+        return (name, converted)
+    
+      let handler = LC.Handler effect bodies
+    
+      putStrLn "\nInfered type:"
+      let it = LI.runInferer handler env
+      print it
+    
+      return (LC.extend env name it, effs)
+    
+showToplevel (env, effs) (P.Effect name funs) = do
+      let (decls, eff) = E.effectIntoDeclarations name funs env
+      return (foldl (\e (n, t) -> LC.extend e n t) env decls, eff : effs)
 
-showToplevel env algorithm@(P.Algorithm f p s) = do
+showToplevel (env, effs) algorithm@(P.Algorithm f p s) = do
       --putStrLn $ "\nChecking function " ++ f ++ "..."
+      converted <- astToLambda algorithm
+      --
+      --putStrLn "\nContext before inference:"
+      --print env
+      --
+      putStrLn "\nInfered type:"
+      let it = LI.runInferer converted env
+      print it
+      --
+      return (LC.extend env f it, effs)
+
+astToLambda algorithm@(P.Algorithm f p s) = do
       --putStrLn "\nNodes:"
       let (label_map, nodes) = B.astToNodes s p
       --mapM showNode nodes
@@ -111,10 +145,7 @@ showToplevel env algorithm@(P.Algorithm f p s) = do
       putStrLn "\nConverted:"
       let converted = C.to_lambda algorithm renamed dom_tree
       putStrLn $ show converted
-      putStrLn "\nInfered type:"
-      let it = LI.runInferer converted env
-      print it
-      return $ LC.extend env f it
+      return converted
 
 main = do
       -- putStrLn "Lexer:"
@@ -124,7 +155,7 @@ main = do
       -- putStrLn "\nParser:"
       let p = P.parse l
       -- print p
-      env <- foldM showToplevel LI.initialEnvironment p
+      (env, _) <- foldM showToplevel (LI.initialEnvironment, []) p
 
       putStrLn "\nFinal environment:"
       print env

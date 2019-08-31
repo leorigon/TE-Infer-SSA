@@ -35,16 +35,17 @@
 //    end: return x;
 //}
 
-effect Aaa {
-  function aaa(): unit;
-  function bbb(int, string): unit;
+effect Bar {
+  function bar(int): int;
 }
 
-effect Bbb {
-  function ccc(int): string;
+algorithm effectful() {
+  return bar(210) + 30;
 }
 
-algorithm foo(var a, var b) {
-  bbb(a, ccc(b));
-  return 20;
+handler removeAaa() {
+  case bar(i): {
+    print(i);
+    return resume(i);
+  }
 }

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Lambda.Inference where
 
+import Data.Maybe
 import Data.Foldable
 import Control.Monad.State
 import Control.Monad.Reader
@@ -68,8 +69,9 @@ unify C.Bar C.Bar = do
     return M.empty
 unify (C.Ref a) (C.Ref b) = do
     unify a b
-unify (C.State) (C.State) =
+unify (C.State) (C.State) = do
     return M.empty
+unify (C.Constant a) (C.Constant b) | a == b = return M.empty
 unify C.String C.String = do
     return M.empty
 unify foo@(C.Row l epsilon1) epsilon2 = do
@@ -239,6 +241,87 @@ infer env (C.Operation C.Eq a b) = do
     infer env (C.Application (C.Application (C.Free "(=)") a) b)
 infer env (C.If a b c) = do
     infer env (C.Application (C.Application (C.Application (C.Free "(?:)") a) b) c)
+
+infer env (C.Handler eff branches) = do
+    let pure = lookup Nothing branches
+    let cases = filter (isJust . fst) branches
+    --
+    epsilon <- newTypeVar
+    -- First, we have to check the return type of our pure expression, which
+    -- always take just one argument
+    (theta_p, tau_p, C.Generic _) <- case pure of
+                                         Just expr ->
+                                            infer env expr
+                                         Nothing ->
+                                            infer env (C.Lambda "" (C.Free ""))
+    -- traceM $ show (theta_p, tau_p)
+    -- We have to check which is the return type of the pure expression
+    tau_x1 <- newTypeVar
+    tau_x2 <- newTypeVar
+    theta_x <- unify (C.Arrow tau_x1 epsilon tau_x2) tau_p
+    -- traceM $ show theta_x
+    -- Now, we must accumulate the subst of each case, each with its own resume
+    theta <- foldM (inferCase tau_x2 epsilon) (theta_x C.@@ theta_p) cases
+    epsilon2 <- newTypeVar
+    let epsilon_r = C.subst theta epsilon
+    let tau_r = C.Arrow (C.Arrow C.Unit (C.Row (C.Constant eff) epsilon_r) (C.subst theta tau_x1)) epsilon_r (C.subst theta tau_x2)
+    return (theta, tau_r, epsilon2)
+    where
+        inferCase tau_x2 epsilon theta (Just name, expr) = do
+            -- Here we need the return type of the effectful function; we use
+            -- an auxiliry function to find it diretly from the context
+            -- Note that any substitution won't change our environment so far
+            let actual_type = (C.getEnvironment env) M.! name
+            let (params, tau_i) = getReturn actual_type
+            -- traceM $ "The return type of " ++ name ++ " is " ++ show tau_i
+            -- We have received the expressions as lambda exprs, so we don't
+            -- care about their parameters... we just have to extend the context
+            -- with the resume operation
+            let resume_type = C.Forall params (C.Arrow tau_i (C.subst theta epsilon) (C.subst theta tau_x2))
+            -- traceM $ "The type of `resume` under " ++ name ++ " is: " ++ show resume_type
+            let env' = C.extend env "resume" resume_type
+            -- We can now infer the body itself...
+            (theta_e, tau_e, epsilon_e) <- infer env' expr
+            -- traceM $ "We infered it to have type " ++ show (tau_e, epsilon_e)
+            -- Make sure that the given parameters and return are correct!
+            let tau_x2' = C.subst (theta_e C.@@ theta) tau_x2
+            let epsilon' = C.subst (theta_e C.@@ theta) epsilon
+            expectedType <- getExpectedType tau_x2' epsilon' actual_type
+            -- traceM $ "We expect this branch to have type " ++ show expectedType
+            --
+            theta' <- unify tau_e expectedType
+            theta'' <- unify (C.subst theta' epsilon_e) (C.subst theta' epsilon')
+            --
+            return $ theta'' C.@@ theta' C.@@ theta_e C.@@ theta
+
+        getReturn (C.Forall _ (C.Arrow a (C.Row (C.Constant u) _) b)) =
+            if u /= eff then
+                -- Should never happen
+                error $ show ("internal compiler error", u, eff)
+            else
+                -- We don't have any type variables in effects (yet), but we
+                -- whould return those here
+                ([], b)
+        getReturn (C.Forall v (C.Arrow a (C.Generic _) b)) =
+            getReturn (C.Forall v b)
+        getReturn x =
+            error $ show ("unexpected type in env!", x)
+
+        -- TODO: Note, this function only works because we are ignoring type
+        -- parameters for effectful computations!!!
+        getExpectedType tau_x2 epsilon (C.Forall _ (C.Arrow a (C.Row (C.Constant u) _) _)) =
+            if u /= eff then
+                -- Should never happen
+                error $ show ("internal compiler error", u, eff)
+            else do
+                return $ C.Arrow a epsilon tau_x2
+        getExpectedType tau_x2 epsilon (C.Forall v (C.Arrow a (C.Generic _) b)) = do
+            traceM "AAAAAAA"
+            var <- newTypeVar
+            tail <- getExpectedType tau_x2 epsilon (C.Forall v b)
+            return $ C.Arrow a var tail
+        getExpectedType _ _ x =
+            error $ show ("unexpected type in env!", x)
 
 initialEnvironment :: C.Environment
 initialEnvironment =

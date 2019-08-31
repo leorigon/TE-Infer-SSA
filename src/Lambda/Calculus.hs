@@ -19,6 +19,7 @@ data Expr = Free String
           | Application Expr Expr
           | Operation Operator Expr Expr
           | Where [(String, Expr)] Expr
+          | Handler String [(Maybe String, Expr)]
 
 -- TODO: Change it for Application.
 data Operator = Sum
@@ -100,9 +101,9 @@ instance Substitutable a => Substitutable [a] where
 
 type Subst = M.Map String Type
 
-data Environment = Environment (M.Map String Scheme)
+newtype Environment = Environment { getEnvironment :: M.Map String Scheme}
                     deriving Eq
-
+                    
 instance Show Environment where
   show (Environment map) =
     init $ unlines $ fmap (\(key, value) -> key ++ ": " ++ show value) (M.toList map)

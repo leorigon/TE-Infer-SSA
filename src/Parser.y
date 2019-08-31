@@ -85,7 +85,7 @@ ToplevelList: {- Empty -}                           { [] }
 
 Toplevel: Algorithm                                 { $1 }
         | Effect                                    { $1 }
-        | Handler                                   { error "TODO" }
+        | Handler                                   { $1 }
 
 Algorithm: algorithm identifier ParamList Body      { Algorithm $2 $3 $4 }
 
@@ -222,12 +222,21 @@ EffectParams: BaseType                              { [$1] }
 EffectReturn: ':' BaseType                          { $2 }
             | ':' unit                              { TypeUnit }
 
-Handler: HandlerPrologue '{' HandlerBody '}'        { () }
-HandlerPrologue: handler identifier '(' ')'         { () }
-HandlerBody: {- empty -}                            { () }
-           | pure ':' Body HandlerBody              { () }
-           | HandlerCase ':' Body HandlerBody       { () }
-HandlerCase: case identifier '(' ')'                { () }
+Handler: HandlerPrologue '{' HandlerBody '}'        { Handler $1 $3 }
+
+ HandlerPrologue: handler identifier '(' ')'        { $2 }
+
+HandlerBody: {- empty -}                            { [] }
+           | HandlerPure ':' Body HandlerBody       { $1 $3 : $4 }
+           | HandlerCase ':' Body HandlerBody       { $1 $3 : $4 }
+
+HandlerPure: pure identifier                        { HandlerPure $2 }
+
+HandlerCase: case identifier '(' ')'                { HandlerCase $2 [] }
+           | case identifier '(' IdentifierList ')' { HandlerCase $2 $4 }
+
+IdentifierList: identifier                          { $1 : [] }
+              | identifier ',' IdentifierList       { $1 : $3 }
 
 {
 
@@ -236,7 +245,12 @@ type Arguments = [Expression]
 
 data Toplevel = Algorithm Identifier Parameters Statement
               | Effect Identifier [EffFunction]
+              | Handler Identifier [HandlerCase]
               deriving Show
+
+data HandlerCase = HandlerPure Identifier Statement
+                 | HandlerCase Identifier [Identifier] Statement
+                 deriving Show
 
 type Parameters = [Declarator]
 

@@ -11,8 +11,8 @@ block_prefix = "B"
 to_lambda (P.Algorithm name params _) nodes dom_tree =
     result
     where
-        result = foldr 
-                add_parameter body params
+        result =  if length params == 0 then LC.Lambda "_" body
+                  else foldr add_parameter body params
             where
                 add_parameter (P.Declarator _ id) node =
                     LC.Lambda (id ++ "0") node
@@ -91,6 +91,10 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
             LC.Operation LC.Lt (convert_expr left) (convert_expr right)
         convert_expr (P.MoreThanExpression left right) =
             LC.Operation LC.Gt (convert_expr left) (convert_expr right)
+        convert_expr (P.CallExpression func []) =
+                -- If we want to call something but we don't have any paremters,
+                -- pretend we're giving it a unit
+            convert_expr (P.CallExpression func [P.UnitExpression])
         convert_expr (P.CallExpression func params) =
             let apply_param f expr = LC.Application f (convert_expr expr) in
             let call = foldl apply_param (LC.Free func) params in
@@ -102,3 +106,4 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
                 LC.TrueValue
             else
                 LC.FalseValue
+     
