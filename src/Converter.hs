@@ -6,7 +6,7 @@ import qualified Lambda.Calculus as LC
 import qualified Data.Map as M
 import Debug.Trace
 
-block_prefix = "B"
+block_prefix = "b"
 
 to_lambda (P.Algorithm name params _) nodes dom_tree =
     result
