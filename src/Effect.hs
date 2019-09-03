@@ -38,7 +38,7 @@ effectIntoDeclarations effect functions g =
 
     declaration [] result = do
       var <- LI.newTypeVar
-      return $ LC.Arrow LC.Unit (LC.Row (LC.Constant effect) var) (lift result)
+      return $ LC.Arrow LC.Unit (LC.Row (LC.Constant effect []) var) (lift result)
     declaration params result = do
       initial <- bar
       res <- foldrM foo initial params
@@ -50,7 +50,7 @@ effectIntoDeclarations effect functions g =
 
         bar = do
           var <- LI.newTypeVar
-          return (LC.Row (LC.Constant effect) var, lift result)
+          return (LC.Row (LC.Constant effect []) var, lift result)
 
     effectCases =
       fmap getEffectDescrition functions

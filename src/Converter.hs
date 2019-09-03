@@ -91,6 +91,8 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
             LC.Operation LC.Lt (convert_expr left) (convert_expr right)
         convert_expr (P.MoreThanExpression left right) =
             LC.Operation LC.Gt (convert_expr left) (convert_expr right)
+        convert_expr (P.EqualsExpression left right) =
+            LC.Operation LC.Eq (convert_expr left) (convert_expr right)
         convert_expr (P.CallExpression func []) =
                 -- If we want to call something but we don't have any paremters,
                 -- pretend we're giving it a unit
