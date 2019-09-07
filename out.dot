@@ -1,12 +1,8 @@
 digraph g {
   d1 [label=b1];
-  b1 [label="b1: Entry: [var i]"];
+  b1 [label="b1: Entry: [var str]"];
   b1 -> b2;
   d2 [label=b2];
   d1 -> d2;
-  b2 [shape=box, label="b2:\n(print i₀)"];
-  b2 -> b3;
-  d3 [label=b3];
-  d2 -> d3;
-  b3 [label="b3: RETURN (resume i₀)"];
+  b2 [label="b2: RETURN (nothing)"];
 }

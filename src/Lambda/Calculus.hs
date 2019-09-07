@@ -19,7 +19,7 @@ data Expr = Free String
           | Application Expr Expr
           | Operation Operator Expr Expr
           | Where [(String, Expr)] Expr
-          | Handler String [(Maybe String, Expr)]
+          | Handler String [(Maybe String, Expr)] Expr
 
 -- TODO: Change it for Application.
 data Operator = Sum
@@ -37,7 +37,7 @@ data Type = Int
           | Unit
           | Generic String
           | Arrow Type Type Type
-          | Constant String
+          | Constant String [Type]
           | Ref Type
           | Console
           | Foo
@@ -72,7 +72,7 @@ instance Substitutable Type where
     ftv (Foo) = S.empty
     ftv (Bar) = S.empty
     ftv (State) = S.empty
-    ftv (Constant _) = S.empty
+    ftv (Constant _ args) = foldl S.union S.empty (fmap ftv args)
     subst _ (Int) = Int
     subst _ (Bool) = Bool
     subst _ (String) = String
@@ -89,7 +89,7 @@ instance Substitutable Type where
     subst _ (Foo) = Foo
     subst _ (Bar) = Bar
     subst _ (State) = State
-    subst _ (Constant k) = Constant k
+    subst m (Constant k args) = Constant k (fmap (subst m) args)
 
 instance Substitutable Scheme where
     ftv (Forall vars t) = (ftv t) `S.difference` (S.fromList vars)
@@ -118,7 +118,9 @@ instance Show Type where
     show (String) = "string"
     show (Unit) = "unit"
     show (Generic s) = s
-    show (Constant s) = s
+    show (Constant s []) = s
+    show (Constant s args) = 
+        s ++ "<" ++ intercalate ", " (fmap show args) ++ ">"
     show (Arrow a@(Arrow _ _ _) e b) =
         "(" ++ (show a) ++ ") → " ++ (show e) ++ " " ++ (show b)
     show (Arrow a e b) =

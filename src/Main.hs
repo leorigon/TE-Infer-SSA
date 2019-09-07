@@ -88,7 +88,9 @@ showToplevel (env, effs) (P.Handler name cases) = do
         converted <- astToLambda algorithm
         return (name, converted)
     
-      let handler = LC.Handler effect bodies
+      let handler = LC.Lambda "'e" $
+            LC.Handler effect bodies $
+                  LC.Application (LC.Free "'e") LC.UnitValue
     
       putStrLn "\nInfered type:"
       let it = LI.runInferer handler env

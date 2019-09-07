@@ -71,7 +71,12 @@ unify (C.Ref a) (C.Ref b) = do
     unify a b
 unify (C.State) (C.State) = do
     return M.empty
-unify (C.Constant a) (C.Constant b) | a == b = return M.empty
+unify (C.Constant a []) (C.Constant b []) | a == b = do
+    return M.empty
+unify (C.Constant a (x:xs)) (C.Constant b (y:ys)) | a == b = do
+    theta1 <- unify (C.Constant a xs) (C.Constant a ys)
+    theta2 <- unify (C.subst theta1 x) (C.subst theta1 y)
+    return $ theta2 C.@@ theta1
 unify C.String C.String = do
     return M.empty
 unify foo@(C.Row l epsilon1) epsilon2 = do
@@ -242,7 +247,7 @@ infer env (C.Operation C.Eq a b) = do
 infer env (C.If a b c) = do
     infer env (C.Application (C.Application (C.Application (C.Free "(?:)") a) b) c)
 
-infer env (C.Handler eff branches) = do
+infer env (C.Handler eff branches e) = do
     let pure = lookup Nothing branches
     let cases = filter (isJust . fst) branches
     --
@@ -262,10 +267,17 @@ infer env (C.Handler eff branches) = do
     -- traceM $ show theta_x
     -- Now, we must accumulate the subst of each case, each with its own resume
     theta <- foldM (inferCase tau_x2 epsilon) (theta_x C.@@ theta_p) cases
-    epsilon2 <- newTypeVar
     let epsilon_r = C.subst theta epsilon
-    let tau_r = C.Arrow (C.Arrow C.Unit (C.Row (C.Constant eff) epsilon_r) (C.subst theta tau_x1)) epsilon_r (C.subst theta tau_x2)
-    return (theta, tau_r, epsilon2)
+    (theta_e, tau_e, epsilon_e) <- infer env e
+    traceM $ "Type of expression itself:"
+    traceM $ show (theta_e, tau_e, epsilon_e)
+    theta_a <- unify tau_e (C.subst (theta_e C.@@ theta) tau_x1)
+    traceM $ show theta_a
+    theta_b <- unify epsilon_e (C.subst theta_e (C.Row (C.Constant eff []) epsilon_r))
+  
+    let theta_acc = theta_b C.@@ theta_a C.@@ theta_e C.@@ theta
+    return (theta_acc, C.subst (theta_acc) tau_x2, C.subst (theta_b C.@@ theta_a) epsilon_r)
+    
     where
         inferCase tau_x2 epsilon theta (Just name, expr) = do
             -- Here we need the return type of the effectful function; we use
@@ -294,7 +306,7 @@ infer env (C.Handler eff branches) = do
             --
             return $ theta'' C.@@ theta' C.@@ theta_e C.@@ theta
 
-        getReturn (C.Forall _ (C.Arrow a (C.Row (C.Constant u) _) b)) =
+        getReturn (C.Forall _ (C.Arrow a (C.Row (C.Constant u _) _) b)) =
             if u /= eff then
                 -- Should never happen
                 error $ show ("internal compiler error", u, eff)
@@ -309,7 +321,7 @@ infer env (C.Handler eff branches) = do
 
         -- TODO: Note, this function only works because we are ignoring type
         -- parameters for effectful computations!!!
-        getExpectedType tau_x2 epsilon (C.Forall _ (C.Arrow a (C.Row (C.Constant u) _) _)) =
+        getExpectedType tau_x2 epsilon (C.Forall _ (C.Arrow a (C.Row (C.Constant u []) _) _)) =
             if u /= eff then
                 -- Should never happen
                 error $ show ("internal compiler error", u, eff)
@@ -346,6 +358,10 @@ initialEnvironment =
             C.Forall ["a", "u"] $
                 C.Arrow (C.Ref (C.Generic "a"))
                     (C.Row C.State (C.Generic "u")) (C.Generic "a")),
+        ("nothing", C.Forall ["a", "u"] $ C.Arrow C.Unit (C.Generic "u")
+                        (C.Constant "Maybe" [C.Generic "a"])),
+        ("just", C.Forall ["a", "u"] $ C.Arrow (C.Generic "a") (C.Generic "u")
+                        (C.Constant "Maybe" [C.Generic "a"])),
         -- Example for how we can remove a effect from a closure
         --("removeFoo",
         --    C.Forall ["a", "b", "u"] $
