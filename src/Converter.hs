@@ -53,7 +53,7 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
 
         apply_parameters source (B.Phi var num actual_parameters destination) lambda =
             let map = M.fromList actual_parameters in
-            let this_param = LC.Free $ var ++ show (map M.! source) in
+            let this_param = get_variable var (map M.! source) in
             let application = LC.Application lambda this_param in
             apply_parameters source destination application
         apply_parameters _ _ lambda = lambda
@@ -74,7 +74,7 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
         convert_expr (P.NumExpression num) =
             LC.Number num
         convert_expr (P.IndexedVarExpression var num) =
-            LC.Free (var ++ show num)
+            get_variable var num
         convert_expr (P.StrExpression str) =
             LC.Text str   
         convert_expr (P.EqualsExpression left right) =
@@ -91,8 +91,6 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
             LC.Operation LC.Lt (convert_expr left) (convert_expr right)
         convert_expr (P.MoreThanExpression left right) =
             LC.Operation LC.Gt (convert_expr left) (convert_expr right)
-        convert_expr (P.EqualsExpression left right) =
-            LC.Operation LC.Eq (convert_expr left) (convert_expr right)
         convert_expr (P.CallExpression func []) =
                 -- If we want to call something but we don't have any paremters,
                 -- pretend we're giving it a unit
@@ -108,4 +106,8 @@ to_lambda (P.Algorithm name params _) nodes dom_tree =
                 LC.TrueValue
             else
                 LC.FalseValue
-     
+        get_variable var num =
+            if var `elem` fmap P.getDeclaratorName params || num > 0 then
+                LC.Free (var ++ show num)
+            else
+                LC.Application (LC.Free "error") (LC.Text "uninitialized")

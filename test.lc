@@ -1,18 +1,31 @@
-effect Exception {
-  function throw(string): unit;
-}
+//effect Exception {
+//  function throw(string): unit;
+//}
+//
+//algorithm safe_division(int a, int b) {
+//  if(b == 0)
+//    throw("can't divide by zero");
+//  return a / b;
+//}
+//
+//handler exception_to_maybe() {
+//  pure x: {
+//    return just(x);
+//  }
+//  case throw(str): {
+//    return nothing();
+//  }
+//}
 
-algorithm safe_division(int a, int b) {
-  if(b == 0)
-    throw("can't divide by zero");
-  return a / b;
-}
+algorithm fibonnaci(int n) {
+  int x = 0;
+  int y = 1;
+  
+  for(int z = 3; z < n; z++) {
+    int w = x + y;
+    x = y;
+    y = w;
+  }
 
-handler exception_to_maybe() {
-  pure x: {
-    return just(x);
-  }
-  case throw(str): {
-    return nothing();
-  }
+  return y;
 }

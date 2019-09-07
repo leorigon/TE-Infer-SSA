@@ -371,6 +371,8 @@ initialEnvironment =
         --            (C.Arrow (C.Generic "a") (C.Generic "u") (C.Generic "a")))
         --("fix", C.Forall ["'a"] $
         --    C.Arrow (C.Arrow (C.Generic "'a") (C.Generic "'a")) (C.Generic "'a")),
+        ("error", C.Forall ["a", "u"] $ C.Arrow C.String (C.Generic "u")
+            (C.Generic "a")),
         ("(+)", C.Forall ["u"] $ C.Arrow C.Int (C.Generic "u")
             (C.Arrow C.Int (C.Generic "u") C.Int)),
         ("(-)", C.Forall ["a", "b"] $ C.Arrow C.Int (C.Generic "a")
